@@ -1,0 +1,2108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DLI Division — Operations Analytics Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&family=Source+Sans+3:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  /* Dark header palette */
+  --navy:#0a1f3c;
+  --navy-2:#112852;
+  --navy-3:#1a3464;
+  --gold:#c8922a;
+  --gold-l:#e0aa40;
+
+  /* Light content palette — Ivory & Gold */
+  --bg:#faf8f3;
+  --bg-2:#f4f1ea;
+  --bg-3:#edeade;
+  --card:#ffffff;
+  --card-2:#fdf9f2;
+  --border:#e2ddd0;
+  --border-2:#d0c9b8;
+  --text:#1a1a2e;
+  --text-2:#4a4a6a;
+  --text-3:#8a8a9a;
+  --gold-bg:rgba(200,146,42,0.08);
+  --gold-border:rgba(200,146,42,0.25);
+  --green:#1a6e40;
+  --green-l:#22964e;
+  --green-bg:rgba(34,150,78,0.08);
+  --green-border:rgba(34,150,78,0.25);
+  --red:#b02020;
+
+  --mono:'Share Tech Mono',monospace;
+  --head:'Rajdhani',sans-serif;
+  --body:'Source Sans 3',sans-serif;
+  --r:10px;
+  --sh:0 2px 12px rgba(10,31,60,0.08);
+  --sh-2:0 4px 24px rgba(10,31,60,0.12);
+}
+
+html,body{font-family:var(--body);background:var(--bg);color:var(--text);min-height:100vh;font-size:14px}
+
+/* ============================================================
+   HEADER — dark navy
+   ============================================================ */
+#hdr{
+  background:var(--navy);
+  border-bottom:1px solid rgba(255,255,255,0.08);
+  padding:0 28px;height:60px;
+  display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:200;
+  box-shadow:0 2px 20px rgba(0,0,0,0.35);
+}
+.hlogo{
+  width:40px;height:40px;background:var(--gold);border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--head);font-size:18px;font-weight:700;color:var(--navy);flex-shrink:0;
+}
+.htitle{
+  font-family:var(--head);font-size:20px;font-weight:700;
+  color:#fff;letter-spacing:.5px;margin-left:12px;
+}
+.hright{display:flex;align-items:center;gap:18px}
+.hclock{font-family:var(--mono);font-size:13px;color:var(--gold-l);letter-spacing:1px}
+.hnr{font-size:11px;color:rgba(255,255,255,0.4);border-left:1px solid rgba(255,255,255,0.12);padding-left:18px;letter-spacing:.3px}
+
+/* ============================================================
+   MODULE TABS — dark navy
+   ============================================================ */
+#mtabs{
+  background:var(--navy-2);
+  border-bottom:1px solid rgba(255,255,255,0.07);
+  display:flex;padding:0 28px;gap:2px;
+}
+.mtab{
+  padding:0 26px;height:46px;
+  display:flex;align-items:center;gap:8px;
+  font-family:var(--body);font-size:13px;font-weight:600;
+  color:rgba(255,255,255,0.45);
+  cursor:pointer;border:none;background:none;
+  border-bottom:3px solid transparent;
+  transition:color .2s,border-color .2s;white-space:nowrap;
+}
+.mtab:hover{color:rgba(255,255,255,0.75)}
+.mtab.active{color:var(--gold-l);border-bottom-color:var(--gold)}
+.mi{font-size:16px}
+
+/* ============================================================
+   SUB TABS — lighter navy
+   ============================================================ */
+#stabs{
+  background:var(--navy-3);
+  border-bottom:2px solid var(--border);
+  display:flex;padding:0 28px;overflow-x:auto;
+  scrollbar-width:none;min-height:40px;
+}
+#stabs::-webkit-scrollbar{display:none}
+#stabs.hidden{display:none}
+.stab{
+  padding:0 16px;height:40px;
+  display:flex;align-items:center;gap:6px;
+  font-size:12px;font-weight:500;
+  color:rgba(255,255,255,0.4);
+  cursor:pointer;border:none;background:none;
+  border-bottom:2px solid transparent;
+  transition:color .2s,border-color .2s;white-space:nowrap;
+}
+.stab:hover{color:rgba(255,255,255,0.7)}
+.stab.active{color:#fff;border-bottom-color:var(--gold-l)}
+.sbadge{font-size:9px;background:rgba(200,146,42,.25);color:var(--gold-l);
+  border:1px solid rgba(200,146,42,.3);padding:1px 5px;border-radius:6px;font-weight:600}
+.sbadge.soon{background:rgba(255,255,255,.07);color:rgba(255,255,255,.35);border-color:rgba(255,255,255,.15)}
+
+/* ============================================================
+   PAGE WRAPPER
+   ============================================================ */
+#content{max-width:1440px;margin:0 auto;padding:24px 24px 80px;position:relative;z-index:1}
+.view{display:none}.view.active{display:block}
+
+/* ============================================================
+   FULL-WIDTH TRAIN SILHOUETTE — bottom of viewport
+   Changes per module via body class
+   ============================================================ */
+#train-stage{
+  position:fixed;bottom:0;left:0;right:0;
+  height:120px;
+  pointer-events:none;
+  z-index:0;
+  overflow:hidden;
+}
+
+/* Coaching = passenger train (gold/amber tones) */
+body.mod-coaching #train-stage svg .train-fill{fill:rgba(200,146,42,0.12)}
+body.mod-coaching #train-stage svg .train-stroke{stroke:rgba(200,146,42,0.22)}
+body.mod-coaching #train-stage svg .track-fill{fill:rgba(200,146,42,0.18)}
+body.mod-coaching #train-stage svg .wheel-stroke{stroke:rgba(200,146,42,0.28)}
+body.mod-coaching #train-stage svg .smoke-fill{fill:rgba(200,146,42,0.07)}
+
+/* Freight = wagon train (green tones) */
+body.mod-freight #train-stage svg .train-fill{fill:rgba(34,150,78,0.12)}
+body.mod-freight #train-stage svg .train-stroke{stroke:rgba(34,150,78,0.22)}
+body.mod-freight #train-stage svg .track-fill{fill:rgba(34,150,78,0.18)}
+body.mod-freight #train-stage svg .wheel-stroke{stroke:rgba(34,150,78,0.28)}
+body.mod-freight #train-stage svg .smoke-fill{fill:rgba(34,150,78,0.07)}
+
+/* Home = neutral navy */
+body.mod-home #train-stage svg .train-fill{fill:rgba(10,31,60,0.07)}
+body.mod-home #train-stage svg .train-stroke{stroke:rgba(10,31,60,0.12)}
+body.mod-home #train-stage svg .track-fill{fill:rgba(10,31,60,0.10)}
+body.mod-home #train-stage svg .wheel-stroke{stroke:rgba(10,31,60,0.14)}
+body.mod-home #train-stage svg .smoke-fill{fill:rgba(10,31,60,0.04)}
+
+/* ============================================================
+   BACKGROUND — ivory per module
+   ============================================================ */
+body.mod-home     {background:#faf8f3}
+body.mod-coaching {background:linear-gradient(160deg,#fdf9f0 0%,#faf6eb 60%,#f5f0e0 100%)}
+body.mod-freight  {background:linear-gradient(160deg,#f5faf6 0%,#eef7f0 60%,#e6f2e8 100%)}
+
+/* ============================================================
+   HOME — STATION BOARD
+   ============================================================ */
+.board-wrap{
+  min-height:calc(100vh - 250px);
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  padding:40px 20px 40px;
+}
+
+.board-eyebrow{
+  font-family:var(--mono);font-size:11px;color:var(--gold);
+  letter-spacing:3px;text-transform:uppercase;
+  margin-bottom:14px;display:flex;align-items:center;
+  justify-content:center;gap:10px;
+}
+.board-eyebrow::before,.board-eyebrow::after{
+  content:'';width:40px;height:1px;background:var(--gold);opacity:.5;
+}
+
+.board-title{
+  font-family:var(--head);font-size:clamp(26px,4vw,52px);
+  font-weight:700;color:var(--navy);letter-spacing:.5px;
+  line-height:1.1;text-align:center;margin-bottom:10px;
+}
+
+.board-sub{
+  font-family:var(--mono);font-size:11px;color:var(--text-3);
+  letter-spacing:2px;text-transform:uppercase;
+  text-align:center;margin-bottom:48px;
+  color:var(--text-2);
+}
+
+/* Departure board */
+.dep-board{
+  width:100%;max-width:900px;
+  background:var(--card);
+  border:1px solid var(--border-2);
+  border-radius:14px;overflow:hidden;
+  box-shadow:var(--sh-2),0 0 0 1px rgba(200,146,42,.08);
+}
+
+.board-col-hdr{
+  background:var(--navy);
+  display:grid;grid-template-columns:1fr 1fr;
+  border-bottom:1px solid rgba(255,255,255,.07);
+}
+.bch{
+  padding:10px 28px;font-family:var(--mono);
+  font-size:10px;color:rgba(255,255,255,.35);
+  letter-spacing:2px;text-transform:uppercase;
+  border-right:1px solid rgba(255,255,255,.07);
+}
+.bch:last-child{border-right:none}
+
+.board-rows{display:grid;grid-template-columns:1fr 1fr}
+
+.brow{
+  padding:36px 32px 32px;cursor:pointer;
+  transition:background .2s;
+  border-right:1px solid var(--border);
+  position:relative;overflow:hidden;
+  background:var(--card);
+}
+.brow:last-child{border-right:none}
+.brow::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:4px;
+  transform:scaleX(0);transform-origin:left;transition:transform .3s ease;
+}
+.brow.coaching::before{background:linear-gradient(90deg,var(--gold),var(--gold-l))}
+.brow.freight::before {background:linear-gradient(90deg,var(--green),var(--green-l))}
+.brow:hover{background:var(--bg-2)}
+.brow:hover::before{transform:scaleX(1)}
+
+/* Large module number */
+.flip-num{
+  font-family:var(--mono);
+  font-size:clamp(50px,6vw,80px);
+  line-height:1;margin-bottom:6px;
+  animation:flicker 9s infinite;
+}
+.brow.coaching .flip-num{color:var(--gold)}
+.brow.freight  .flip-num{color:var(--green-l);animation-delay:1.5s}
+@keyframes flicker{0%,96%,98%,100%{opacity:1}97%{opacity:.7}}
+
+.brow-platform{
+  font-family:var(--mono);font-size:10px;color:var(--text-3);
+  letter-spacing:2px;text-transform:uppercase;margin-bottom:14px;
+}
+.brow-name{
+  font-family:var(--head);font-size:26px;font-weight:700;
+  color:var(--navy);margin-bottom:8px;
+}
+.brow-desc{font-size:13px;color:var(--text-2);line-height:1.65;margin-bottom:18px;max-width:320px}
+
+.brow-features{display:flex;flex-direction:column;gap:7px;margin-bottom:24px}
+.bfeat{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-2)}
+.bfeat-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.brow.coaching .bfeat-dot{background:var(--gold)}
+.brow.freight  .bfeat-dot{background:var(--green-l)}
+.bfeat.dim{color:var(--text-3)}.bfeat.dim .bfeat-dot{background:var(--border-2)}
+
+.enter-btn{
+  display:inline-flex;align-items:center;gap:8px;
+  border:1.5px solid;border-radius:8px;
+  padding:9px 22px;font-family:var(--mono);
+  font-size:11px;letter-spacing:1px;text-transform:uppercase;
+  cursor:pointer;background:transparent;
+  transition:background .2s,color .2s;
+}
+.brow.coaching .enter-btn{border-color:var(--gold);color:var(--gold)}
+.brow.coaching .enter-btn:hover{background:var(--gold);color:#fff}
+.brow.freight  .enter-btn{border-color:var(--green);color:var(--green)}
+.brow.freight  .enter-btn:hover{background:var(--green);color:#fff}
+
+.board-foot{
+  background:var(--navy);
+  border-top:1px solid rgba(255,255,255,.07);
+  padding:10px 28px;
+  display:flex;align-items:center;justify-content:space-between;
+  font-family:var(--mono);font-size:10px;
+  color:rgba(255,255,255,.35);letter-spacing:1px;
+  flex-wrap:wrap;gap:8px;
+}
+.bstatus-dot{
+  display:inline-block;width:7px;height:7px;border-radius:50%;
+  background:#22c55e;margin-right:7px;animation:blink 2s infinite;
+}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+
+.scroll-hint{
+  text-align:center;margin-top:24px;
+  font-family:var(--mono);font-size:10px;color:var(--text-3);
+  letter-spacing:2px;animation:bounce 2.5s ease-in-out infinite;
+}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(5px)}}
+
+/* ============================================================
+   SPL TRAINS SECTION
+   ============================================================ */
+.s-topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px}
+.s-title{font-family:var(--head);font-size:22px;font-weight:700;color:var(--navy);display:flex;align-items:center;gap:10px}
+.s-crumb{font-family:var(--body);font-size:13px;font-weight:400;color:var(--text-3)}
+.open-btn{
+  display:inline-flex;align-items:center;gap:7px;
+  background:var(--navy);color:#fff;border:none;border-radius:8px;
+  padding:9px 18px;font-size:12px;font-weight:600;cursor:pointer;
+  text-decoration:none;transition:background .15s;font-family:var(--body);
+  box-shadow:var(--sh);
+}
+.open-btn:hover{background:var(--navy-2)}
+
+/* Status bar */
+.sbar{
+  font-size:12px;color:var(--text-2);margin-bottom:14px;
+  padding:7px 14px;background:var(--card);
+  border-radius:7px;border:1px solid var(--border);
+  align-items:center;gap:8px;display:none;
+  box-shadow:var(--sh);
+}
+.sbar.vis{display:flex}
+.sdot{width:8px;height:8px;border-radius:50%;background:#22c55e;flex-shrink:0}
+.sdot.loading{background:var(--gold);animation:pulse 1s infinite}
+.sdot.error{background:var(--red)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+/* Filter row */
+.frow{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--r);padding:10px 18px;margin-bottom:18px;
+  box-shadow:var(--sh);
+}
+.flabel{font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.07em;white-space:nowrap}
+.dinput{
+  border:1px solid var(--border-2);border-radius:6px;
+  background:var(--bg-2);color:var(--text);
+  padding:6px 10px;font-size:13px;font-family:var(--body);cursor:pointer;
+}
+.dinput:focus{outline:none;border-color:var(--gold)}
+.brefresh{
+  background:var(--gold);color:#fff;border:none;border-radius:6px;
+  padding:7px 16px;font-size:13px;font-weight:700;cursor:pointer;
+  font-family:var(--body);transition:background .15s;
+}
+.brefresh:hover{background:var(--gold-l)}
+.autonote{font-size:11px;color:var(--text-3);margin-left:auto;white-space:nowrap;font-family:var(--mono)}
+
+/* Section label */
+.slabel{
+  font-size:10px;font-weight:600;color:var(--text-3);
+  text-transform:uppercase;letter-spacing:.09em;margin:18px 0 8px;
+}
+
+/* KPI grid */
+.kg{display:grid;gap:10px;margin-bottom:6px}
+.kg3{grid-template-columns:repeat(3,1fr)}
+.kg4{grid-template-columns:repeat(4,1fr)}
+.kg9{grid-template-columns:repeat(9,1fr)}
+
+.kc{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--r);padding:14px 14px;text-align:center;
+  box-shadow:var(--sh);
+}
+.kc.acc{border-top:3px solid var(--gold)}
+.klbl{font-size:11px;color:var(--text-3);margin-bottom:5px;line-height:1.3}
+.kval{font-family:var(--head);font-size:28px;font-weight:700;color:var(--navy);line-height:1}
+.kval.sm{font-size:22px}.kval.xs{font-size:16px}
+.ksub{font-size:10px;color:var(--text-3);margin-top:3px}
+
+/* Direction cards */
+.dc{border-top:3px solid var(--border-2);cursor:pointer;transition:transform .15s,box-shadow .15s}
+.dc:hover{transform:translateY(-2px);box-shadow:var(--sh-2)}
+.dc.east {border-color:#e07020}.dc.west {border-color:#2070d4}
+.dc.north{border-color:#20a060}.dc.south{border-color:#9020d4}
+.dc.ad.east {box-shadow:0 0 0 2.5px #e07020}
+.dc.ad.west {box-shadow:0 0 0 2.5px #2070d4}
+.dc.ad.north{box-shadow:0 0 0 2.5px #20a060}
+.dc.ad.south{box-shadow:0 0 0 2.5px #9020d4}
+.khint{font-size:9px;color:var(--text-3);margin-top:4px;font-family:var(--mono)}
+
+/* Direction drill-down panel */
+#dp{display:none;margin-top:10px;background:var(--card);border:1px solid var(--border-2);
+  border-radius:var(--r);overflow:hidden;box-shadow:var(--sh-2);animation:sd .2s ease}
+@keyframes sd{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+#dp-hdr{padding:10px 16px;display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid var(--border);background:var(--bg-2)}
+#dp-title{font-size:13px;font-weight:600;color:var(--navy)}
+#dp-close{background:none;border:none;font-size:18px;color:var(--text-3);cursor:pointer;line-height:1;padding:0 4px}
+#dp-close:hover{color:var(--text)}
+#dp-tw{overflow-x:auto;max-height:280px;overflow-y:auto}
+#dp table{width:100%;border-collapse:collapse;font-size:12px;min-width:700px}
+#dp thead th{background:var(--navy);color:rgba(255,255,255,.55);font-size:10.5px;font-weight:600;
+  padding:7px 12px;text-align:left;white-space:nowrap;position:sticky;top:0;z-index:2}
+#dp tbody tr:nth-child(even){background:var(--bg)}
+#dp tbody tr:hover{background:var(--gold-bg)}
+#dp tbody td{padding:6px 12px;color:var(--text-2);white-space:nowrap;border-bottom:1px solid var(--border)}
+#dp-foot{padding:7px 16px;font-size:11px;color:var(--text-3);border-top:1px solid var(--border);
+  background:var(--bg-2);font-family:var(--mono);letter-spacing:.5px}
+
+/* Charts */
+.crow{display:grid;gap:12px;margin-top:18px}
+.c2-1{grid-template-columns:2fr 1fr}.c1-1{grid-template-columns:1fr 1fr}
+.cc{background:var(--card);border:1px solid var(--border);border-radius:var(--r);
+  padding:16px 18px;box-shadow:var(--sh)}
+.ctitle{font-size:11px;font-weight:600;color:var(--text-3);margin-bottom:12px;
+  text-transform:uppercase;letter-spacing:.07em;font-family:var(--mono)}
+.cw{position:relative;width:100%}
+
+/* Data table */
+.tsec{margin-top:18px;background:var(--card);border:1px solid var(--border);
+  border-radius:var(--r);overflow:hidden;box-shadow:var(--sh)}
+.thdr{padding:11px 16px;display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid var(--border);background:var(--bg-2);flex-wrap:wrap;gap:8px}
+.thdrl{font-size:13px;font-weight:600;color:var(--navy)}
+.fg{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.fbtn{background:var(--card);border:1px solid var(--border-2);border-radius:5px;
+  padding:5px 10px;font-size:11px;color:var(--text-3);cursor:pointer;
+  font-family:var(--body);transition:all .15s}
+.fbtn:hover{background:var(--bg-3);border-color:var(--border-2)}
+.fbtn.active{background:var(--navy);color:#fff;border-color:var(--navy);font-weight:700}
+.sbox{border:1px solid var(--border-2);border-radius:5px;background:var(--bg-2);
+  color:var(--text);padding:6px 12px;font-size:12px;width:220px;font-family:var(--body)}
+.sbox:focus{outline:none;border-color:var(--gold)}
+.tw{overflow-x:auto;max-height:400px;overflow-y:auto}
+table.dt{width:100%;border-collapse:collapse;font-size:12px;min-width:1000px}
+table.dt thead th{background:var(--navy);color:rgba(255,255,255,.55);font-size:10.5px;
+  font-weight:600;padding:8px 12px;text-align:left;position:sticky;top:0;z-index:2;white-space:nowrap}
+table.dt tbody tr:nth-child(even){background:var(--bg)}
+table.dt tbody tr:hover{background:var(--gold-bg)}
+table.dt tbody td{padding:7px 12px;color:var(--text-2);white-space:nowrap;border-bottom:1px solid var(--border)}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600}
+.bo{background:#dcfce7;color:#166534}.bp{background:#dbeafe;color:#1e3a8a}
+.be{background:#ffedd5;color:#9a3412}.bw{background:#dbeafe;color:#1e3a8a}
+.bn{background:#dcfce7;color:#166534}.bs{background:#f3e8ff;color:#6b21a8}
+.bpm{background:#fee2e2;color:#991b1b}
+.nodat{text-align:center;padding:50px;color:var(--text-3);font-size:14px}
+.pgrow{padding:10px 16px;display:flex;align-items:center;gap:10px;font-size:12px;
+  color:var(--text-3);border-top:1px solid var(--border);background:var(--bg-2);flex-wrap:wrap}
+.pgbtn{background:var(--card);border:1px solid var(--border-2);border-radius:5px;
+  padding:4px 12px;font-size:12px;cursor:pointer;color:var(--text-2);font-family:var(--body)}
+.pgbtn:hover{background:var(--bg-3)}.pgbtn:disabled{opacity:.35;cursor:default}
+
+/* Coming soon */
+.cswrap{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:80px 20px;text-align:center;min-height:calc(100vh - 300px)}
+.csicon{font-size:60px;margin-bottom:20px;animation:float 3s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.cswrap h2{font-family:var(--head);font-size:28px;font-weight:700;color:var(--navy);margin-bottom:10px}
+.cswrap p{color:var(--text-2);font-size:14px;max-width:440px;line-height:1.7;margin-bottom:24px}
+.pillrow{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.pill{background:var(--card);border:1px solid var(--border-2);border-radius:20px;
+  padding:5px 14px;font-size:11px;font-weight:500;color:var(--text-3);
+  display:flex;align-items:center;gap:5px;font-family:var(--mono);box-shadow:var(--sh)}
+.pill.done{border-color:#86efac;color:#166534;background:#f0fdf4}
+.pill.ip{border-color:#fcd34d;color:#92400e;background:#fffbeb}
+
+/* ── FREIGHT OVERVIEW ── */
+.fo-month-pill{
+  padding:5px 12px;border-radius:20px;font-size:11px;font-weight:600;
+  cursor:pointer;border:1.5px solid var(--border-2);background:var(--card);
+  color:var(--text-3);font-family:var(--mono);letter-spacing:.5px;
+  transition:all .15s;user-select:none;
+}
+.fo-month-pill:hover{border-color:var(--green);color:var(--green)}
+.fo-month-pill.active{background:var(--green);color:#fff;border-color:var(--green)}
+
+.fo-kpi-card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--r);padding:18px 20px;
+  box-shadow:var(--sh);border-top:3px solid var(--green-l);
+}
+.fo-kpi-month{font-family:var(--mono);font-size:11px;color:var(--text-3);
+  letter-spacing:1px;text-transform:uppercase;margin-bottom:14px;font-weight:600}
+.fo-kpi-row2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:6px}
+.fo-kpi-item{}
+.fo-kpi-lbl{font-size:11px;color:var(--text-3);margin-bottom:6px;font-weight:500;text-transform:uppercase;letter-spacing:.04em}
+.fo-kpi-val{font-family:var(--head);font-size:36px;font-weight:700;color:var(--navy);line-height:1;letter-spacing:.5px}
+.fo-kpi-unit{font-size:11px;color:var(--text-3);margin-top:4px;font-family:var(--mono)}
+  border-top:1px solid var(--border);background:var(--card);line-height:1.8;
+  font-family:var(--mono);letter-spacing:.3px;position:relative;z-index:1}
+#foot strong{color:var(--navy)}
+
+/* Responsive */
+@media(max-width:860px){.board-rows{grid-template-columns:1fr}.brow{border-right:none;border-bottom:1px solid var(--border)}.brow:last-child{border-bottom:none}}
+@media(max-width:900px){.kg9{grid-template-columns:repeat(3,1fr)}.kg4{grid-template-columns:repeat(2,1fr)}.c2-1,.c1-1{grid-template-columns:1fr}}
+@media(max-width:600px){.kg3{grid-template-columns:1fr}.kg9{grid-template-columns:repeat(3,1fr)}#hdr{padding:0 14px}.htitle{font-size:15px}#mtabs{padding:0 12px}#content{padding:16px 12px 80px}}
+</style>
+</head>
+<body class="mod-home">
+
+<!-- ============================================================
+     TRAIN SILHOUETTE — fixed bottom, full width
+     ============================================================ -->
+<div id="train-stage">
+  <!-- PASSENGER TRAIN (home + coaching) -->
+  <svg id="svg-passenger" viewBox="0 0 1440 120" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMax meet" style="width:100%;height:100%;position:absolute;bottom:0;left:0;transition:opacity .7s ease">
+    <!-- Track rails -->
+    <rect x="0" y="104" width="1440" height="4" rx="2" class="track-fill"/>
+    <rect x="0" y="111" width="1440" height="2" rx="1" class="track-fill" style="opacity:.5"/>
+    <!-- Sleepers -->
+    <g class="train-fill">
+      <rect x="0"    y="102" width="16" height="9" rx="2"/>
+      <rect x="36"   y="102" width="16" height="9" rx="2"/>
+      <rect x="72"   y="102" width="16" height="9" rx="2"/>
+      <rect x="108"  y="102" width="16" height="9" rx="2"/>
+      <rect x="144"  y="102" width="16" height="9" rx="2"/>
+      <rect x="180"  y="102" width="16" height="9" rx="2"/>
+      <rect x="216"  y="102" width="16" height="9" rx="2"/>
+      <rect x="252"  y="102" width="16" height="9" rx="2"/>
+      <rect x="288"  y="102" width="16" height="9" rx="2"/>
+      <rect x="324"  y="102" width="16" height="9" rx="2"/>
+      <rect x="360"  y="102" width="16" height="9" rx="2"/>
+      <rect x="396"  y="102" width="16" height="9" rx="2"/>
+      <rect x="432"  y="102" width="16" height="9" rx="2"/>
+      <rect x="468"  y="102" width="16" height="9" rx="2"/>
+      <rect x="504"  y="102" width="16" height="9" rx="2"/>
+      <rect x="540"  y="102" width="16" height="9" rx="2"/>
+      <rect x="576"  y="102" width="16" height="9" rx="2"/>
+      <rect x="612"  y="102" width="16" height="9" rx="2"/>
+      <rect x="648"  y="102" width="16" height="9" rx="2"/>
+      <rect x="684"  y="102" width="16" height="9" rx="2"/>
+      <rect x="720"  y="102" width="16" height="9" rx="2"/>
+      <rect x="756"  y="102" width="16" height="9" rx="2"/>
+      <rect x="792"  y="102" width="16" height="9" rx="2"/>
+      <rect x="828"  y="102" width="16" height="9" rx="2"/>
+      <rect x="864"  y="102" width="16" height="9" rx="2"/>
+      <rect x="900"  y="102" width="16" height="9" rx="2"/>
+      <rect x="936"  y="102" width="16" height="9" rx="2"/>
+      <rect x="972"  y="102" width="16" height="9" rx="2"/>
+      <rect x="1008" y="102" width="16" height="9" rx="2"/>
+      <rect x="1044" y="102" width="16" height="9" rx="2"/>
+      <rect x="1080" y="102" width="16" height="9" rx="2"/>
+      <rect x="1116" y="102" width="16" height="9" rx="2"/>
+      <rect x="1152" y="102" width="16" height="9" rx="2"/>
+      <rect x="1188" y="102" width="16" height="9" rx="2"/>
+      <rect x="1224" y="102" width="16" height="9" rx="2"/>
+      <rect x="1260" y="102" width="16" height="9" rx="2"/>
+      <rect x="1296" y="102" width="16" height="9" rx="2"/>
+      <rect x="1332" y="102" width="16" height="9" rx="2"/>
+      <rect x="1368" y="102" width="16" height="9" rx="2"/>
+      <rect x="1404" y="102" width="16" height="9" rx="2"/>
+    </g>
+    <!-- Locomotive -->
+    <path d="M30,100 L30,58 Q30,48 42,48 L155,48 Q182,48 194,62 L210,82 L210,100 Z" class="train-fill train-stroke" stroke-width="1.2" fill-opacity="1"/>
+    <rect x="35" y="53" width="65" height="30" rx="3" class="train-fill" style="opacity:.6"/>
+    <rect x="40" y="58" width="24" height="18" rx="2" class="train-stroke" stroke-width="1" fill="none"/>
+    <rect x="72" y="58" width="24" height="18" rx="2" class="train-stroke" stroke-width="1" fill="none"/>
+    <circle cx="205" cy="72" r="4" class="train-fill" style="opacity:.7"/>
+    <!-- Loco chimney smoke puffs -->
+    <circle cx="65" cy="38" r="9" class="smoke-fill"/>
+    <circle cx="80" cy="28" r="12" class="smoke-fill" style="opacity:.7"/>
+    <circle cx="98" cy="18" r="15" class="smoke-fill" style="opacity:.5"/>
+    <circle cx="120" cy="10" r="10" class="smoke-fill" style="opacity:.3"/>
+    <!-- Loco wheels -->
+    <circle cx="58"  cy="97" r="11" class="wheel-stroke" fill="none" stroke-width="2"/>
+    <circle cx="58"  cy="97" r="4"  class="train-fill"/>
+    <circle cx="105" cy="97" r="11" class="wheel-stroke" fill="none" stroke-width="2"/>
+    <circle cx="105" cy="97" r="4"  class="train-fill"/>
+    <circle cx="155" cy="97" r="11" class="wheel-stroke" fill="none" stroke-width="2"/>
+    <circle cx="155" cy="97" r="4"  class="train-fill"/>
+    <circle cx="197" cy="97" r="8"  class="wheel-stroke" fill="none" stroke-width="1.5"/>
+    <!-- Coach 1 -->
+    <rect x="218" y="62" width="185" height="40" rx="5" class="train-fill train-stroke" stroke-width="1"/>
+    <rect x="226" y="68" width="169" height="22" rx="2" class="train-fill" style="opacity:.4"/>
+    <rect x="232" y="70" width="26" height="18" rx="2" class="train-stroke" fill="none" stroke-width="1"/>
+    <rect x="268" y="70" width="26" height="18" rx="2" class="train-stroke" fill="none" stroke-width="1"/>
+    <rect x="304" y="70" width="26" height="18" rx="2" class="train-stroke" fill="none" stroke-width="1"/>
+    <rect x="340" y="70" width="26" height="18" rx="2" class="train-stroke" fill="none" stroke-width="1"/>
+    <rect x="376" y="70" width="26" height="18" rx="2" class="train-stroke" fill="none" stroke-width="1"/>
+    <circle cx="240" cy="97" r="10" class="wheel-stroke" fill="none" stroke-width="1.5"/>
+    <circle cx="240" cy="97" r="3.5" class="train-fill"/>
+    <circle cx="390" cy="97" r="10" class="wheel-stroke" fill="none" stroke-width="1.5"/>
+    <circle cx="390" cy="97" r="3.5" class="train-fill"/>
+    <!-- Coach 2 -->
+    <rect x="410" y="63" width="185" height="39" rx="5" class="train-fill train-stroke" stroke-width=".9" style="opacity:.85"/>
+    <rect x="420" y="70" width="26" height="17" rx="2" class="train-stroke" fill="none" stroke-width=".9"/>
+    <rect x="456" y="70" width="26" height="17" rx="2" class="train-stroke" fill="none" stroke-width=".9"/>
+    <rect x="492" y="70" width="26" height="17" rx="2" class="train-stroke" fill="none" stroke-width=".9"/>
+    <rect x="528" y="70" width="26" height="17" rx="2" class="train-stroke" fill="none" stroke-width=".9"/>
+    <rect x="564" y="70" width="26" height="17" rx="2" class="train-stroke" fill="none" stroke-width=".9"/>
+    <circle cx="432" cy="97" r="10" class="wheel-stroke" fill="none" stroke-width="1.5"/>
+    <circle cx="432" cy="97" r="3.5" class="train-fill"/>
+    <circle cx="582" cy="97" r="10" class="wheel-stroke" fill="none" stroke-width="1.5"/>
+    <circle cx="582" cy="97" r="3.5" class="train-fill"/>
+    <!-- Coach 3 fading -->
+    <rect x="600" y="65" width="185" height="37" rx="5" class="train-fill train-stroke" stroke-width=".7" style="opacity:.6"/>
+    <rect x="610" y="72" width="24" height="15" rx="2" class="train-stroke" fill="none" stroke-width=".7"/>
+    <rect x="644" y="72" width="24" height="15" rx="2" class="train-stroke" fill="none" stroke-width=".7"/>
+    <rect x="678" y="72" width="24" height="15" rx="2" class="train-stroke" fill="none" stroke-width=".7"/>
+    <rect x="712" y="72" width="24" height="15" rx="2" class="train-stroke" fill="none" stroke-width=".7"/>
+    <circle cx="622" cy="97" r="9" class="wheel-stroke" fill="none" stroke-width="1.2"/>
+    <circle cx="770" cy="97" r="9" class="wheel-stroke" fill="none" stroke-width="1.2"/>
+    <!-- Coach 4 very faded -->
+    <rect x="788" y="68" width="185" height="34" rx="5" class="train-fill train-stroke" stroke-width=".5" style="opacity:.35"/>
+    <circle cx="810" cy="97" r="8" class="wheel-stroke" fill="none" stroke-width="1" style="opacity:.5"/>
+    <circle cx="958" cy="97" r="8" class="wheel-stroke" fill="none" stroke-width="1" style="opacity:.5"/>
+    <!-- Coach 5 ghost -->
+    <rect x="976" y="70" width="185" height="32" rx="5" class="train-fill" style="opacity:.15"/>
+    <circle cx="998" cy="97" r="7" class="wheel-stroke" fill="none" stroke-width=".8" style="opacity:.25"/>
+    <circle cx="1146" cy="97" r="7" class="wheel-stroke" fill="none" stroke-width=".8" style="opacity:.25"/>
+  </svg>
+
+  <!-- FREIGHT WAGONS (freight module only) -->
+  <svg id="svg-freight" viewBox="0 0 1440 120" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMax meet" style="width:100%;height:100%;position:absolute;bottom:0;left:0;opacity:0;transition:opacity .7s ease">
+    <!-- Track rails -->
+    <rect x="0" y="104" width="1440" height="4" rx="2" class="track-fill"/>
+    <rect x="0" y="111" width="1440" height="2" rx="1" class="track-fill" style="opacity:.5"/>
+    <!-- Sleepers -->
+    <g class="train-fill">
+      <rect x="0"    y="102" width="16" height="9" rx="2"/>
+      <rect x="36"   y="102" width="16" height="9" rx="2"/>
+      <rect x="72"   y="102" width="16" height="9" rx="2"/>
+      <rect x="108"  y="102" width="16" height="9" rx="2"/>
+      <rect x="144"  y="102" width="16" height="9" rx="2"/>
+      <rect x="180"  y="102" width="16" height="9" rx="2"/>
+      <rect x="216"  y="102" width="16" height="9" rx="2"/>
+      <rect x="252"  y="102" width="16" height="9" rx="2"/>
+      <rect x="288"  y="102" width="16" height="9" rx="2"/>
+      <rect x="324"  y="102" width="16" height="9" rx="2"/>
+      <rect x="360"  y="102" width="16" height="9" rx="2"/>
+      <rect x="396"  y="102" width="16" height="9" rx="2"/>
+      <rect x="432"  y="102" width="16" height="9" rx="2"/>
+      <rect x="468"  y="102" width="16" height="9" rx="2"/>
+      <rect x="504"  y="102" width="16" height="9" rx="2"/>
+      <rect x="540"  y="102" width="16" height="9" rx="2"/>
+      <rect x="576"  y="102" width="16" height="9" rx="2"/>
+      <rect x="612"  y="102" width="16" height="9" rx="2"/>
+      <rect x="648"  y="102" width="16" height="9" rx="2"/>
+      <rect x="684"  y="102" width="16" height="9" rx="2"/>
+      <rect x="720"  y="102" width="16" height="9" rx="2"/>
+      <rect x="756"  y="102" width="16" height="9" rx="2"/>
+      <rect x="792"  y="102" width="16" height="9" rx="2"/>
+      <rect x="828"  y="102" width="16" height="9" rx="2"/>
+      <rect x="864"  y="102" width="16" height="9" rx="2"/>
+      <rect x="900"  y="102" width="16" height="9" rx="2"/>
+      <rect x="936"  y="102" width="16" height="9" rx="2"/>
+      <rect x="972"  y="102" width="16" height="9" rx="2"/>
+      <rect x="1008" y="102" width="16" height="9" rx="2"/>
+      <rect x="1044" y="102" width="16" height="9" rx="2"/>
+      <rect x="1080" y="102" width="16" height="9" rx="2"/>
+      <rect x="1116" y="102" width="16" height="9" rx="2"/>
+      <rect x="1152" y="102" width="16" height="9" rx="2"/>
+      <rect x="1188" y="102" width="16" height="9" rx="2"/>
+      <rect x="1224" y="102" width="16" height="9" rx="2"/>
+      <rect x="1260" y="102" width="16" height="9" rx="2"/>
+      <rect x="1296" y="102" width="16" height="9" rx="2"/>
+      <rect x="1332" y="102" width="16" height="9" rx="2"/>
+      <rect x="1368" y="102" width="16" height="9" rx="2"/>
+      <rect x="1404" y="102" width="16" height="9" rx="2"/>
+    </g>
+    <!-- Diesel loco for freight -->
+    <rect x="20"  y="52" width="170" height="50" rx="5" class="train-fill train-stroke" stroke-width="1.2"/>
+    <rect x="20"  y="52" width="60"  height="30" rx="4" class="train-fill" style="opacity:.6"/>
+    <rect x="28"  y="58" width="22"  height="16" rx="2" class="train-stroke" fill="none" stroke-width="1"/>
+    <rect x="56"  y="58" width="22"  height="16" rx="2" class="train-stroke" fill="none" stroke-width="1"/>
+    <!-- Radiator grilles -->
+    <line x1="95"  y1="56" x2="95"  y2="100" class="train-stroke" stroke-width=".8"/>
+    <line x1="108" y1="56" x2="108" y2="100" class="train-stroke" stroke-width=".8"/>
+    <line x1="121" y1="56" x2="121" y2="100" class="train-stroke" stroke-width=".8"/>
+    <line x1="134" y1="56" x2="134" y2="100" class="train-stroke" stroke-width=".8"/>
+    <line x1="147" y1="56" x2="147" y2="100" class="train-stroke" stroke-width=".8"/>
+    <line x1="160" y1="56" x2="160" y2="100" class="train-stroke" stroke-width=".8"/>
+    <circle cx="178" cy="68" r="4" class="train-fill" style="opacity:.8"/>
+    <circle cx="45"  cy="97" r="11" class="wheel-stroke" fill="none" stroke-width="2"/>
+    <circle cx="45"  cy="97" r="4"  class="train-fill"/>
+    <circle cx="100" cy="97" r="11" class="wheel-stroke" fill="none" stroke-width="2"/>
+    <circle cx="100" cy="97" r="4"  class="train-fill"/>
+    <circle cx="155" cy="97" r="11" class="wheel-stroke" fill="none" stroke-width="2"/>
+    <circle cx="155" cy="97" r="4"  class="train-fill"/>
+    <!-- BOX wagon 1 -->
+    <rect x="200" y="58" width="140" height="44" rx="4" class="train-fill train-stroke" stroke-width="1"/>
+    <rect x="208" y="64" width="124" height="22" rx="2" class="train-fill" style="opacity:.4"/>
+    <line x1="270" y1="58" x2="270" y2="102" class="train-stroke" stroke-width=".8"/>
+    <!-- Rivet details -->
+    <circle cx="208" cy="62" r="2" class="train-fill"/><circle cx="332" cy="62" r="2" class="train-fill"/>
+    <circle cx="208" cy="98" r="2" class="train-fill"/><circle cx="332" cy="98" r="2" class="train-fill"/>
+    <circle cx="218" cy="97" r="10" class="wheel-stroke" fill="none" stroke-width="1.5"/>
+    <circle cx="218" cy="97" r="3.5" class="train-fill"/>
+    <circle cx="322" cy="97" r="10" class="wheel-stroke" fill="none" stroke-width="1.5"/>
+    <circle cx="322" cy="97" r="3.5" class="train-fill"/>
+    <!-- OPEN wagon 2 -->
+    <rect x="350" y="64" width="130" height="38" rx="4" class="train-fill train-stroke" stroke-width="1"/>
+    <!-- Cargo inside open wagon -->
+    <rect x="358" y="68" width="114" height="18" rx="2" class="train-fill" style="opacity:.5"/>
+    <line x1="380" y1="64" x2="380" y2="82" class="train-stroke" stroke-width=".7"/>
+    <line x1="408" y1="64" x2="408" y2="82" class="train-stroke" stroke-width=".7"/>
+    <line x1="436" y1="64" x2="436" y2="82" class="train-stroke" stroke-width=".7"/>
+    <line x1="464" y1="64" x2="464" y2="82" class="train-stroke" stroke-width=".7"/>
+    <circle cx="368" cy="97" r="10" class="wheel-stroke" fill="none" stroke-width="1.5"/>
+    <circle cx="368" cy="97" r="3.5" class="train-fill"/>
+    <circle cx="462" cy="97" r="10" class="wheel-stroke" fill="none" stroke-width="1.5"/>
+    <circle cx="462" cy="97" r="3.5" class="train-fill"/>
+    <!-- TANK wagon 3 -->
+    <rect x="488" y="65" width="130" height="37" rx="3" class="train-fill train-stroke" stroke-width="1" style="opacity:.9"/>
+    <ellipse cx="553" cy="65" rx="40" ry="12" class="train-fill" style="opacity:.5"/>
+    <line x1="520" y1="65" x2="520" y2="102" class="train-stroke" stroke-width=".8"/>
+    <line x1="586" y1="65" x2="586" y2="102" class="train-stroke" stroke-width=".8"/>
+    <circle cx="506" cy="97" r="10" class="wheel-stroke" fill="none" stroke-width="1.5"/>
+    <circle cx="506" cy="97" r="3.5" class="train-fill"/>
+    <circle cx="600" cy="97" r="10" class="wheel-stroke" fill="none" stroke-width="1.5"/>
+    <circle cx="600" cy="97" r="3.5" class="train-fill"/>
+    <!-- BOX wagon 4 fading -->
+    <rect x="626" y="66" width="130" height="36" rx="4" class="train-fill train-stroke" stroke-width=".9" style="opacity:.7"/>
+    <line x1="690" y1="66" x2="690" y2="102" class="train-stroke" stroke-width=".7"/>
+    <circle cx="644" cy="97" r="9" class="wheel-stroke" fill="none" stroke-width="1.3"/>
+    <circle cx="748" cy="97" r="9" class="wheel-stroke" fill="none" stroke-width="1.3"/>
+    <!-- OPEN wagon 5 fading more -->
+    <rect x="764" y="68" width="125" height="34" rx="4" class="train-fill train-stroke" stroke-width=".7" style="opacity:.5"/>
+    <circle cx="782" cy="97" r="9" class="wheel-stroke" fill="none" stroke-width="1" style="opacity:.7"/>
+    <circle cx="880" cy="97" r="9" class="wheel-stroke" fill="none" stroke-width="1" style="opacity:.7"/>
+    <!-- Wagon 6 ghost -->
+    <rect x="896" y="70" width="125" height="32" rx="4" class="train-fill" style="opacity:.3"/>
+    <circle cx="914" cy="97" r="8" class="wheel-stroke" fill="none" stroke-width=".8" style="opacity:.4"/>
+    <circle cx="1012" cy="97" r="8" class="wheel-stroke" fill="none" stroke-width=".8" style="opacity:.4"/>
+    <!-- Wagon 7 very ghost -->
+    <rect x="1028" y="72" width="120" height="30" rx="4" class="train-fill" style="opacity:.15"/>
+    <circle cx="1046" cy="97" r="7" class="wheel-stroke" fill="none" stroke-width=".6" style="opacity:.2"/>
+  </svg>
+</div>
+
+<!-- ============================================================
+     HEADER
+     ============================================================ -->
+<header id="hdr">
+  <div style="display:flex;align-items:center">
+    <div class="hlogo">IR</div>
+    <div class="htitle">DLI Division — Operations Analytics Dashboard</div>
+  </div>
+  <div class="hright">
+    <div class="hclock" id="live-clock">--:--:--</div>
+    <div class="hnr">Northern Railways</div>
+  </div>
+</header>
+
+<!-- MODULE TABS -->
+<div id="mtabs">
+  <button class="mtab active" id="mtab-home"     onclick="switchMod('home')">    <span class="mi">🏠</span> Home</button>
+  <button class="mtab"        id="mtab-coaching" onclick="switchMod('coaching')"><span class="mi">🚂</span> Coaching Operations</button>
+  <button class="mtab"        id="mtab-freight"  onclick="switchMod('freight')"> <span class="mi">🚛</span> Freight Operations</button>
+</div>
+
+<!-- SUB TABS -->
+<div id="stabs" class="hidden">
+  <button class="stab" id="stab-spl" onclick="switchSub('spl')" data-mod="coaching">🚆 SPL Trains <span class="sbadge">Live</span></button>
+  <button class="stab" id="stab-fo"  onclick="switchSub('fo')"  data-mod="freight">📊 Overview</button>
+  <button class="stab" id="stab-ft"  onclick="switchSub('ft')"  data-mod="freight">🚛 Train Movements <span class="sbadge">Live</span></button>
+  <button class="stab" id="stab-fop" onclick="switchSub('fop')" data-mod="freight">🔧 Operations <span class="sbadge soon">Soon</span></button>
+  <button class="stab" id="stab-ftr" onclick="switchSub('ftr')" data-mod="freight">🏢 Traction Change <span class="sbadge soon">Soon</span></button>
+  <button class="stab" id="stab-fic" onclick="switchSub('fic')" data-mod="freight">📋 IC Performance <span class="sbadge soon">Soon</span></button>
+</div>
+
+<!-- CONTENT -->
+<div id="content">
+
+<!-- HOME -->
+<div id="view-home" class="view active">
+  <div class="board-wrap">
+    <div class="board-eyebrow">Northern Railways · DLI Division</div>
+    <div class="board-title">Operations Analytics Dashboard</div>
+    <div class="board-sub">Integrated Intelligence Platform · Inspector Data Analytics</div>
+
+    <div class="dep-board">
+      <div class="board-col-hdr">
+        <div class="bch">Module</div>
+        <div class="bch">Status / Features</div>
+      </div>
+      <div class="board-rows">
+        <div class="brow coaching" onclick="switchMod('coaching')">
+          <div class="flip-num">01</div>
+          <div class="brow-platform">Platform · Coaching Operations</div>
+          <div class="brow-name">Coaching Operations</div>
+          <div class="brow-desc">Special train tracking and coaching fleet intelligence for DLI Division.</div>
+          <div class="brow-features">
+            <div class="bfeat"><span class="bfeat-dot"></span>SPL Trains — Live</div>
+            <div class="bfeat dim"><span class="bfeat-dot"></span>Punctuality Tracking — Coming Soon</div>
+            <div class="bfeat dim"><span class="bfeat-dot"></span>Cancellations & Diversions — Coming Soon</div>
+          </div>
+          <button class="enter-btn" onclick="event.stopPropagation();switchMod('coaching')">▶ &nbsp; Enter Module</button>
+        </div>
+        <div class="brow freight" onclick="switchMod('freight')">
+          <div class="flip-num">02</div>
+          <div class="brow-platform">Platform · Freight Operations</div>
+          <div class="brow-name">Freight Operations</div>
+          <div class="brow-desc">Wagon loading, IC performance, traction change and revenue metrics across all freight corridors.</div>
+          <div class="brow-features">
+            <div class="bfeat"><span class="bfeat-dot"></span>Overview & KPIs — Migrating</div>
+            <div class="bfeat dim"><span class="bfeat-dot"></span>Train Movements — Coming Soon</div>
+            <div class="bfeat dim"><span class="bfeat-dot"></span>IC Performance — Coming Soon</div>
+          </div>
+          <button class="enter-btn" onclick="event.stopPropagation();switchMod('freight')">▶ &nbsp; Enter Module</button>
+        </div>
+      </div>
+      <div class="board-foot">
+        <span><span class="bstatus-dot"></span>SYSTEM ONLINE</span>
+        <span>LAST REFRESH: <span id="home-ref">--</span></span>
+        <span>DLI DIV · NR · <span id="home-dt">--</span></span>
+      </div>
+    </div>
+    <div class="scroll-hint">▼ &nbsp; SELECT A MODULE TO CONTINUE &nbsp; ▼</div>
+  </div>
+</div>
+
+<!-- SPL TRAINS -->
+<div id="view-spl" class="view">
+  <div class="s-topbar">
+    <div class="s-title">🚆 SPL Trains <span class="s-crumb">/ Coaching Operations</span></div>
+    <a href="https://dli-div.github.io/dli-dashboard/" target="_blank" class="open-btn">↗ &nbsp; Open Dedicated Dashboard</a>
+  </div>
+  <div class="sbar" id="sbar"><span class="sdot loading" id="sdot"></span><span id="sbar-txt">Connecting...</span></div>
+  <div class="frow">
+    <span class="flabel">Date Range</span>
+    <span style="font-size:11px;color:var(--text-3)">From</span>
+    <input type="date" class="dinput" id="spl-from">
+    <span style="font-size:11px;color:var(--text-3)">To</span>
+    <input type="date" class="dinput" id="spl-to">
+    <button class="brefresh" onclick="splLoad()">↺ Refresh</button>
+    <span class="autonote">AUTO-REFRESH · 1HR</span>
+  </div>
+
+  <div class="slabel">Overview — Selected Date Range</div>
+  <div class="kg kg3">
+    <div class="kc acc"><div class="klbl">Total Specials Running</div><div class="kval" id="k-tot">—</div><div class="ksub" id="k-sub">in selected range</div></div>
+    <div class="kc"><div class="klbl">Originating</div><div class="kval" id="k-ori">—</div><div class="ksub">from DLI Division</div></div>
+    <div class="kc"><div class="klbl">Passing</div><div class="kval" id="k-pas">—</div><div class="ksub">through DLI Division</div></div>
+  </div>
+
+  <div class="slabel">Direction-wise Count <span style="font-size:9px;color:var(--text-3);font-weight:400;text-transform:none;letter-spacing:0">— click a card to view trains</span></div>
+  <div class="kg kg4">
+    <div class="kc dc east"  onclick="showDP('East')"  id="db-East"><div class="klbl">East Bound</div><div class="kval sm" id="k-e">—</div><div class="khint">CLICK TO VIEW</div></div>
+    <div class="kc dc west"  onclick="showDP('West')"  id="db-West"><div class="klbl">West Bound</div><div class="kval sm" id="k-w">—</div><div class="khint">CLICK TO VIEW</div></div>
+    <div class="kc dc north" onclick="showDP('North')" id="db-North"><div class="klbl">North Bound</div><div class="kval sm" id="k-n">—</div><div class="khint">CLICK TO VIEW</div></div>
+    <div class="kc dc south" onclick="showDP('South')" id="db-South"><div class="klbl">South Bound</div><div class="kval sm" id="k-s">—</div><div class="khint">CLICK TO VIEW</div></div>
+  </div>
+
+  <div id="dp">
+    <div id="dp-hdr"><span id="dp-title">East Bound Trains</span><button id="dp-close" onclick="closeDP()">✕</button></div>
+    <div id="dp-tw"><table><thead><tr><th>Train No</th><th>From Stn</th><th>To Stn</th><th>D/P Time</th><th>A/R Time</th><th>Orig/Pass</th><th>Terminal</th><th>Maintenance</th><th>Train Type</th><th>Via</th></tr></thead><tbody id="dp-body"></tbody></table></div>
+    <div id="dp-foot"></div>
+  </div>
+
+  <div class="slabel">Terminal-wise Count (DLI Division)</div>
+  <div class="kg kg9" id="tgrid"></div>
+
+  <div class="crow c2-1">
+    <div class="cc"><div class="ctitle">Terminal-wise train count</div><div class="cw" style="height:210px"><canvas id="cTerm"></canvas></div></div>
+    <div class="cc"><div class="ctitle">Direction-wise distribution</div><div class="cw" style="height:210px"><canvas id="cDir"></canvas></div></div>
+  </div>
+  <div class="crow c1-1">
+    <div class="cc"><div class="ctitle">7-day trend — specials per day</div><div class="cw" style="height:190px"><canvas id="cTrend"></canvas></div></div>
+    <div class="cc"><div class="ctitle">Maintenance — PM at DLI vs Other Divisions</div><div class="cw" style="height:190px"><canvas id="cMaint"></canvas></div></div>
+  </div>
+
+  <div class="tsec">
+    <div class="thdr">
+      <span class="thdrl" id="thdrl">Detailed Train List</span>
+      <div class="fg">
+        <button class="fbtn active" onclick="setF('all',this)">All</button>
+        <button class="fbtn" onclick="setF('Originating',this)">Originating</button>
+        <button class="fbtn" onclick="setF('Passing',this)">Passing</button>
+        <input type="text" class="sbox" id="sbox" placeholder="🔍 Search train / station..." oninput="renderT()">
+      </div>
+    </div>
+    <div class="tw">
+      <table class="dt">
+        <thead><tr><th>S.No</th><th>Train No</th><th>From Stn</th><th>To Stn</th><th>D/P Time</th><th>A/R Time</th><th>Direction</th><th>Orig/Pass</th><th>Terminal</th><th>Maintenance</th><th>Train Type</th><th>Total Load</th><th>Load Details</th><th>Via</th></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <div class="nodat" id="nodat" style="display:none">No special trains found for selected date range.</div>
+    </div>
+    <div class="pgrow">
+      <button class="pgbtn" id="pg-prev" onclick="prevPg()">← Prev</button>
+      <span id="pg-info">Page 1 of 1</span>
+      <button class="pgbtn" id="pg-next" onclick="nextPg()">Next →</button>
+      <span style="margin-left:auto" id="pg-tot"></span>
+    </div>
+  </div>
+</div>
+
+<!-- FREIGHT OVERVIEW — LIVE DASHBOARD -->
+<div id="view-fo" class="view">
+
+  <!-- TOP BAR -->
+  <div class="s-topbar">
+    <div class="s-title">📊 Freight Overview <span class="s-crumb">/ Freight Operations</span></div>
+    <button class="brefresh" onclick="foLoad()">↺ Refresh</button>
+  </div>
+
+  <!-- STATUS -->
+  <div class="sbar" id="fo-sbar">
+    <span class="sdot loading" id="fo-sdot"></span>
+    <span id="fo-stxt">Loading freight data...</span>
+  </div>
+
+  <!-- FILTERS -->
+  <div class="frow" style="flex-wrap:wrap;gap:12px;align-items:flex-start">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span class="flabel">Year</span>
+      <select class="dinput" id="fo-year" onchange="foApplyFilter()">
+        <option value="2024">2024</option>
+        <option value="2025">2025</option>
+        <option value="2026" selected>2026</option>
+        <option value="2027">2027</option>
+      </select>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <span class="flabel">Months</span>
+      <div id="fo-month-pills" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+    </div>
+    <button class="brefresh" style="margin-left:auto" onclick="foSelectAllMonths()">All Months</button>
+    <button class="brefresh" style="background:var(--navy)" onclick="foClearMonths()">Clear</button>
+  </div>
+
+  <!-- KPI CARDS — dynamic per selected months -->
+  <div class="slabel" id="fo-kpi-label">KPI Summary</div>
+  <div id="fo-kpi-row" style="display:grid;gap:10px;margin-bottom:16px"></div>
+
+  <!-- CHART 1 — Monthly Wagons/Day Comparison -->
+  <div class="crow c1-1" style="margin-top:0">
+    <div class="cc">
+      <div class="ctitle">Monthwise Loading — Wagons/Day (Comparative)</div>
+      <div class="cw" style="height:260px"><canvas id="fo-cWagons"></canvas></div>
+    </div>
+    <div class="cc">
+      <div class="ctitle">Monthwise Loading — Million Tonnes (Comparative)</div>
+      <div class="cw" style="height:260px"><canvas id="fo-cMT"></canvas></div>
+    </div>
+  </div>
+
+  <!-- CHART 3 — Revenue Loading vs Target (Cumulative Daily) -->
+  <div class="cc" style="margin-top:12px">
+    <div class="ctitle">Revenue Loading vs Target — Cumulative Daily (MT)</div>
+    <div class="cw" style="height:280px"><canvas id="fo-cRevTarget"></canvas></div>
+  </div>
+
+  <!-- CHART 4 — Daily Wagon Loading -->
+  <div class="cc" style="margin-top:12px">
+    <div class="ctitle">Wagon Loading — Daily Comparison (LY vs CY · Selected Months)</div>
+    <div class="cw" style="height:300px"><canvas id="fo-cDaily"></canvas></div>
+  </div>
+
+</div>
+  </div>
+</div>
+<div id="view-ft" class="view">
+
+  <!-- TOP BAR -->
+  <div class="s-topbar">
+    <div class="s-title">🚛 Train Movements <span class="s-crumb">/ Main Line</span></div>
+    <button class="brefresh" onclick="tmLoad()">↺ Refresh</button>
+  </div>
+
+  <!-- STATUS -->
+  <div class="sbar" id="tm-sbar">
+    <span class="sdot loading" id="tm-sdot"></span>
+    <span id="tm-stxt">Loading train movement data...</span>
+  </div>
+
+  <!-- FILTERS -->
+  <div class="frow" style="flex-wrap:wrap;gap:12px;align-items:flex-start">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span class="flabel">Year</span>
+      <select class="dinput" id="tm-year" onchange="tmApplyFilter()">
+        <option value="2024">2024</option>
+        <option value="2025">2025</option>
+        <option value="2026" selected>2026</option>
+        <option value="2027">2027</option>
+      </select>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <span class="flabel">Months</span>
+      <div id="tm-month-pills" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+    </div>
+    <button class="brefresh" style="margin-left:auto" onclick="tmSelectAll()">All Months</button>
+    <button class="brefresh" style="background:var(--navy)" onclick="tmClearMonths()">Clear</button>
+  </div>
+
+  <!-- KPI CARDS — one per selected month, all stations avg/day -->
+  <div class="slabel">Avg Trains Per Day — Month wise</div>
+  <div id="tm-kpi-row" style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px"></div>
+
+  <!-- 8 MINI CHARTS — 2 per row -->
+  <div class="slabel">Station-wise Daily Train Movement — UP vs DN</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px" id="tm-charts-grid">
+    <div class="cc"><div class="ctitle" id="tm-t-NDLS">NDLS — UP vs DN</div><div class="cw" style="height:200px"><canvas id="tm-c-NDLS"></canvas></div></div>
+    <div class="cc"><div class="ctitle" id="tm-t-DLI">DLI — UP vs DN</div><div class="cw" style="height:200px"><canvas id="tm-c-DLI"></canvas></div></div>
+    <div class="cc"><div class="ctitle" id="tm-t-DSJ">DSJ — UP vs DN</div><div class="cw" style="height:200px"><canvas id="tm-c-DSJ"></canvas></div></div>
+    <div class="cc"><div class="ctitle" id="tm-t-DEE">DEE — UP vs DN</div><div class="cw" style="height:200px"><canvas id="tm-c-DEE"></canvas></div></div>
+    <div class="cc"><div class="ctitle" id="tm-t-PTNR">PTNR — UP vs DN</div><div class="cw" style="height:200px"><canvas id="tm-c-PTNR"></canvas></div></div>
+    <div class="cc"><div class="ctitle" id="tm-t-SOUTH_LN">South LN — UP vs DN</div><div class="cw" style="height:200px"><canvas id="tm-c-SOUTH_LN"></canvas></div></div>
+    <div class="cc"><div class="ctitle" id="tm-t-NORTH_LN">North LN — UP vs DN</div><div class="cw" style="height:200px"><canvas id="tm-c-NORTH_LN"></canvas></div></div>
+    <div class="cc"><div class="ctitle" id="tm-t-NZM">NZM — UP vs DN</div><div class="cw" style="height:200px"><canvas id="tm-c-NZM"></canvas></div></div>
+  </div>
+
+</div>
+<div id="view-fop" class="view">
+  <div class="cswrap"><div class="csicon">🔧</div><h2>Freight Operations</h2>
+    <p>Engine utilisation, crack details, piecemeal and operational performance metrics across DLI Division.</p>
+    <div class="pillrow"><div class="pill done">✅ Data in Firebase</div><div class="pill ip">⏳ Migrating to Sheets API</div><div class="pill">🔲 Dashboard Build</div></div>
+  </div>
+</div>
+<div id="view-ftr" class="view">
+  <div class="cswrap"><div class="csicon">🏢</div><h2>Traction Change</h2>
+    <p>Station-wise loco count, reversals and progressive traction change — TKD, GZB, PTNR, SSB, JIND, ABO, SPZ, ROK, SSZ.</p>
+    <div class="pillrow"><div class="pill done">✅ Data in Firebase</div><div class="pill ip">⏳ Migrating to Sheets API</div><div class="pill">🔲 Dashboard Build</div></div>
+  </div>
+</div>
+<div id="view-fic" class="view">
+  <div class="cswrap"><div class="csicon">📋</div><h2>IC Performance</h2>
+    <p>Foreign and local interchange — receipt and dispatch across CR, WR, KAT, TDL, MB, DBD and all IC points.</p>
+    <div class="pillrow"><div class="pill done">✅ Data in Firebase</div><div class="pill ip">⏳ Migrating to Sheets API</div><div class="pill">🔲 Dashboard Build</div></div>
+  </div>
+</div>
+
+</div><!-- #content -->
+
+<footer id="foot">
+  DLI Division — Operations Analytics Dashboard &nbsp;·&nbsp; Northern Railways &nbsp;·&nbsp; Live Data via Google Sheets API
+  <br>Created by <strong>Hari Om</strong> &nbsp;·&nbsp; Inspector Data Analytics · CHG Cell DRMO · DLI Division
+</footer>
+
+<script>
+/* CLOCK */
+function tick(){
+  const n=new Date();
+  document.getElementById('live-clock').textContent=n.toLocaleTimeString('en-IN',{hour12:false,timeZone:'Asia/Kolkata'});
+  document.getElementById('home-dt').textContent=n.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric',timeZone:'Asia/Kolkata'});
+}
+setInterval(tick,1000);tick();
+function setRef(){document.getElementById('home-ref').textContent=new Date().toLocaleTimeString('en-IN',{hour12:false,timeZone:'Asia/Kolkata'});}
+
+/* ── TRAIN SILHOUETTE SWITCHER ── */
+function setTrainTheme(mod){
+  // Remove all mod classes
+  document.body.classList.remove('mod-home','mod-coaching','mod-freight');
+  document.body.classList.add('mod-'+mod);
+  // Toggle which SVG is visible
+  const pass=document.getElementById('svg-passenger');
+  const frt =document.getElementById('svg-freight');
+  if(mod==='freight'){
+    pass.style.opacity='0';
+    frt.style.opacity='1';
+  } else {
+    pass.style.opacity='1';
+    frt.style.opacity='0';
+  }
+}
+
+/* ── NAVIGATION ── */
+let curMod='home';
+const modDef={coaching:'spl',freight:'fo'};
+
+function switchMod(mod){
+  document.querySelectorAll('.mtab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('mtab-'+mod).classList.add('active');
+  curMod=mod;
+  setTrainTheme(mod);
+
+  if(mod==='home'){
+    document.getElementById('stabs').classList.add('hidden');
+    showView('home');return;
+  }
+  const sb=document.getElementById('stabs');
+  sb.classList.remove('hidden');
+  document.querySelectorAll('.stab').forEach(t=>{
+    t.style.display=t.dataset.mod===mod?'flex':'none';
+    t.classList.remove('active');
+  });
+  switchSub(modDef[mod]);
+}
+
+function switchSub(sub){
+  document.querySelectorAll('.stab').forEach(t=>t.classList.remove('active'));
+  const el=document.getElementById('stab-'+sub);
+  if(el)el.classList.add('active');
+  showView(sub);
+  if(sub==='spl'&&allData.length===0)splLoad();
+  if(sub==='fo'&&foData.dailyKPIs.length===0)foInit();
+  else if(sub==='fo')foApplyFilter();
+  if(sub==='ft'&&tmData.length===0)tmInit();
+  else if(sub==='ft')tmApplyFilter();
+}
+
+function showView(n){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  const el=document.getElementById('view-'+n);
+  if(el)el.classList.add('active');
+}
+
+/* ── CONFIGURATION ── */
+const APIKEY='AIzaSyDGS15xARpwOI8W8Fo0Avkv2gRGAjU4VE0';
+const SID='1Y84ROwQn4X0Dg3sHgGMeYmnBnEiTl97U3I3TqkSyogE';
+const STAB='Master_Sheet';
+const TERMS=['DLI','NZM','NDLS','ANVT','ROK','JIND','KKDE','SSB','DEE'];
+const PGS=20;
+const C={sno:0,tn:1,fs:2,dp:3,ts:4,ar:5,jco:7,ter:8,mnt:9,dir:11,op:12,tl:13,ld:14,adli:18,tt:25,v1:26,v2:27};
+
+let allData=[],filtered=[],actF='all',pg=1,adp=null;
+let chTerm,chDir,chTrend,chMaint;
+
+/* INIT */
+(function(){
+  const t=toISO(new Date());
+  document.getElementById('spl-from').value=t;
+  document.getElementById('spl-to').value=t;
+  document.getElementById('spl-from').addEventListener('change',splUpd);
+  document.getElementById('spl-to').addEventListener('change',splUpd);
+  buildTG();
+  setInterval(splLoad,3600000);
+  setTrainTheme('home');
+})();
+
+function toISO(d){return d.toISOString().split('T')[0];}
+
+function sdi(v){
+  if(!v&&v!==0)return null;
+  const s=v.toString().trim();if(!s)return null;
+  if(s.includes('/')){const p=s.split('/');if(p.length===3)return`${p[2].padStart(4,'0')}-${p[0].padStart(2,'0')}-${p[1].padStart(2,'0')}`;}
+  const n=parseFloat(s);
+  if(!isNaN(n)&&n>1000){const d=new Date(new Date(1899,11,30).getTime()+n*86400000);return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+  return null;
+}
+
+function fmtD(iso){return new Date(iso+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});}
+
+function buildTG(){
+  document.getElementById('tgrid').innerHTML=TERMS.map(t=>`<div class="kc"><div class="klbl">${t}</div><div class="kval xs" id="kt-${t}">—</div></div>`).join('');
+}
+
+async function splLoad(){
+  setS('loading','Fetching data from Google Sheets...',true);
+  try{
+    const r=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SID}/values/${encodeURIComponent(STAB)}!A:AC?key=${APIKEY}`);
+    if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error((e.error&&e.error.message)||`HTTP ${r.status}`);}
+    const j=await r.json();const rows=j.values||[];
+    if(rows.length<2){setS('ok','Sheet appears empty.',true);return;}
+    allData=rows.slice(1).filter(r=>r&&r.length>1);
+    setS('ok','',false);setRef();splUpd();
+  }catch(e){setS('error','✕ '+e.message+' — Ensure sheet is "Anyone with link can view".',true);}
+}
+
+function setS(t,m,v){
+  const b=document.getElementById('sbar');b.classList.toggle('vis',v);
+  const d=document.getElementById('sdot');d.className='sdot'+(t==='loading'?' loading':t==='error'?' error':'');
+  document.getElementById('sbar-txt').textContent=m;
+}
+
+function getRng(f,t){
+  return allData.filter(r=>{
+    const tp=(r[C.op]||'').toString().trim().toLowerCase();let iso=null;
+    if(tp==='originating')iso=sdi(r[7]);
+    else if(tp==='passing'){const v=(r[18]!==undefined&&r[18]!==null)?r[18].toString().trim():'';iso=v?sdi(v):null;}
+    if(!iso)return false;return iso>=f&&iso<=t;
+  });
+}
+
+function splUpd(){
+  const f=document.getElementById('spl-from').value;
+  let t=document.getElementById('spl-to').value;
+  if(!f||!t)return;
+  if(t<f){document.getElementById('spl-to').value=f;t=f;}
+  const d=getRng(f,t);
+  const sub=document.getElementById('k-sub');
+  if(sub)sub.textContent=f===t?`on ${fmtD(f)}`:`${fmtD(f)} – ${fmtD(t)}`;
+  updKPI(d);updCharts(d,f);
+  filtered=d;actF='all';
+  document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.fbtn')[0].classList.add('active');
+  const sb=document.getElementById('sbox');if(sb)sb.value='';
+  pg=1;closeDP();renderT();
+}
+
+function updKPI(d){
+  const ori=d.filter(r=>cl(r,C.op)==='Originating').length;
+  const pas=d.filter(r=>cl(r,C.op)==='Passing').length;
+  s('k-tot',d.length);s('k-ori',ori);s('k-pas',pas);
+  const dirs={East:0,West:0,North:0,South:0};
+  d.forEach(r=>{const x=cl(r,C.dir);if(x in dirs)dirs[x]++;});
+  s('k-e',dirs.East);s('k-w',dirs.West);s('k-n',dirs.North);s('k-s',dirs.South);
+  TERMS.forEach(t=>{
+    const cnt=d.filter(r=>(r[C.ter]||'').toString().toUpperCase().includes(t)).length;
+    const el=document.getElementById('kt-'+t);if(el)el.textContent=cnt;
+  });
+}
+
+function cl(r,i){return(r[i]||'').toString().trim();}
+function s(id,v){const el=document.getElementById(id);if(el)el.textContent=v;}
+
+function updCharts(data,fromD){
+  const tc=TERMS.map(t=>data.filter(r=>(r[C.ter]||'').toString().toUpperCase().includes(t)).length);
+  const dirs={East:0,West:0,North:0,South:0};
+  data.forEach(r=>{const x=cl(r,C.dir);if(x in dirs)dirs[x]++;});
+  const pmD=data.filter(r=>{const m=(r[C.mnt]||'').toString().toUpperCase();return m.includes('PM AT DLI')||m.trim()==='PM';}).length;
+  const pmO=data.length-pmD;
+  const base=new Date(fromD+'T00:00:00');
+  const tl=[],tv=[];
+  for(let i=-3;i<=3;i++){const d=new Date(base);d.setDate(base.getDate()+i);const iso=toISO(d);tl.push(d.toLocaleDateString('en-IN',{day:'2-digit',month:'short'}));tv.push(getRng(iso,iso).length);}
+
+  const grid='rgba(10,31,60,0.06)',tick='#8a8a9a',tf={size:11};
+
+  const barL={id:'bl',afterDatasetsDraw(c){const ctx=c.ctx;c.data.datasets.forEach((ds,i)=>{c.getDatasetMeta(i).data.forEach((b,idx)=>{const v=ds.data[idx];if(!v)return;ctx.save();ctx.font='600 11px Source Sans 3,sans-serif';ctx.fillStyle='#1a1a2e';ctx.textAlign='center';ctx.textBaseline='bottom';ctx.fillText(v,b.x,b.y-4);ctx.restore();});});}};
+  const dL={id:'dl',afterDatasetsDraw(c){const ctx=c.ctx;c.data.datasets.forEach((ds,i)=>{const tot=ds.data.reduce((a,b)=>a+b,0);c.getDatasetMeta(i).data.forEach((arc,idx)=>{const v=ds.data[idx];if(!v||!tot)return;const pct=Math.round(v/tot*100);const ang=(arc.startAngle+arc.endAngle)/2;const r2=(arc.innerRadius+arc.outerRadius)/2;const x=arc.x+Math.cos(ang)*r2,y=arc.y+Math.sin(ang)*r2;ctx.save();ctx.font='700 10px Source Sans 3,sans-serif';ctx.fillStyle='#fff';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(`${v} (${pct}%)`,x,y);ctx.restore();});});}};
+  const lL={id:'ll',afterDatasetsDraw(c){const ctx=c.ctx;c.data.datasets.forEach((ds,i)=>{c.getDatasetMeta(i).data.forEach((pt,idx)=>{const v=ds.data[idx];if(v===undefined||v===null)return;ctx.save();ctx.font='700 11px Source Sans 3,sans-serif';ctx.fillStyle='#c8922a';ctx.textAlign='center';ctx.textBaseline='bottom';ctx.fillText(v,pt.x,pt.y-7);ctx.restore();});});}};
+
+  if(chTerm)chTerm.destroy();
+  chTerm=new Chart(document.getElementById('cTerm'),{type:'bar',
+    data:{labels:TERMS,datasets:[{label:'Trains',data:tc,backgroundColor:'#1a2d50',borderRadius:5,barThickness:26}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{ticks:{color:tick,font:tf},grid:{display:false}},y:{ticks:{color:tick,font:tf,stepSize:1},grid:{color:grid},beginAtZero:true}}},
+    plugins:[barL]});
+
+  if(chDir)chDir.destroy();
+  chDir=new Chart(document.getElementById('cDir'),{type:'doughnut',
+    data:{labels:['East','West','North','South'],datasets:[{data:[dirs.East,dirs.West,dirs.North,dirs.South],backgroundColor:['#e07020','#2070d4','#20a060','#9020d4'],borderWidth:0,borderRadius:3}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'55%',plugins:{legend:{position:'bottom',labels:{font:{size:11},color:tick,boxWidth:12,padding:10}}}},
+    plugins:[dL]});
+
+  if(chTrend)chTrend.destroy();
+  chTrend=new Chart(document.getElementById('cTrend'),{type:'line',
+    data:{labels:tl,datasets:[{label:'Specials',data:tv,borderColor:'#c8922a',backgroundColor:'rgba(200,146,42,.1)',borderWidth:2.5,pointRadius:5,pointBackgroundColor:'#c8922a',pointBorderColor:'#fff',pointBorderWidth:2,tension:.35,fill:true}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{ticks:{color:tick,font:tf},grid:{display:false}},y:{ticks:{color:tick,font:tf,stepSize:1},grid:{color:grid},beginAtZero:true}}},
+    plugins:[lL]});
+
+  if(chMaint)chMaint.destroy();
+  chMaint=new Chart(document.getElementById('cMaint'),{type:'doughnut',
+    data:{labels:['PM at DLI','Other Div'],datasets:[{data:[pmD,pmO],backgroundColor:['#b02020','#1a6e40'],borderWidth:0,borderRadius:3}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'55%',plugins:{legend:{position:'bottom',labels:{font:{size:11},color:tick,boxWidth:12,padding:10}}}},
+    plugins:[dL]});
+}
+
+function setF(f,btn){actF=f;document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');pg=1;renderT();}
+
+function getPD(){
+  let d=filtered;
+  if(actF!=='all')d=d.filter(r=>cl(r,C.op)===actF);
+  const sx=document.getElementById('sbox').value.toLowerCase().trim();
+  if(sx)d=d.filter(r=>r.some(c=>c&&c.toString().toLowerCase().includes(sx)));
+  return d;
+}
+
+function dBadge(d){const m={East:'be',West:'bw',North:'bn',South:'bs'};return`<span class="badge ${m[d]||''}">${d||'—'}</span>`;}
+function mBadge(m){const u=(m||'').toString().toUpperCase();if(u.includes('PM AT DLI')||u.trim()==='PM')return`<span class="badge bpm">${m}</span>`;return m||'—';}
+
+function renderT(){
+  const d=getPD(),tot=d.length;
+  const pgs=Math.max(1,Math.ceil(tot/PGS));if(pg>pgs)pg=pgs;
+  document.getElementById('thdrl').textContent=`Detailed Train List — ${tot} record${tot!==1?'s':''} found`;
+  document.getElementById('pg-info').textContent=`Page ${pg} of ${pgs}`;
+  document.getElementById('pg-tot').textContent=`Total: ${tot}`;
+  document.getElementById('pg-prev').disabled=pg===1;
+  document.getElementById('pg-next').disabled=pg===pgs;
+  const sl=d.slice((pg-1)*PGS,pg*PGS);
+  const tb=document.getElementById('tbody');const nd=document.getElementById('nodat');
+  if(!sl.length){tb.innerHTML='';nd.style.display='block';return;}
+  nd.style.display='none';
+  const oc=t=>t==='Originating'?'bo':'bp';
+  tb.innerHTML=sl.map(r=>{
+    const op=cl(r,C.op),dir=cl(r,C.dir),via=r[C.v2]||r[C.v1]||'—';
+    return`<tr><td>${r[C.sno]||''}</td><td><strong>${r[C.tn]||'—'}</strong></td><td>${r[C.fs]||'—'}</td><td>${r[C.ts]||'—'}</td><td>${r[C.dp]||'—'}</td><td>${r[C.ar]||'—'}</td><td>${dBadge(dir)}</td><td><span class="badge ${oc(op)}">${op||'—'}</span></td><td>${r[C.ter]||'—'}</td><td>${mBadge(r[C.mnt])}</td><td>${r[C.tt]||'—'}</td><td>${r[C.tl]||'—'}</td><td>${r[C.ld]||'—'}</td><td>${via}</td></tr>`;
+  }).join('');
+}
+
+function prevPg(){if(pg>1){pg--;renderT();}}
+function nextPg(){const p=Math.max(1,Math.ceil(getPD().length/PGS));if(pg<p){pg++;renderT();}}
+
+const DC={East:'#e07020',West:'#2070d4',North:'#20a060',South:'#9020d4'};
+function showDP(dir){
+  if(adp===dir){closeDP();return;}adp=dir;
+  ['East','West','North','South'].forEach(d=>{const el=document.getElementById('db-'+d);if(el)el.classList.toggle('ad',d===dir);});
+  const trains=filtered.filter(r=>cl(r,C.dir)===dir);
+  const col=DC[dir];
+  document.getElementById('dp-title').innerHTML=`<span style="color:${col}">■</span>&nbsp; ${dir} Bound Trains &nbsp;<span style="font-size:11px;font-weight:400;color:var(--text-3)">(${trains.length} train${trains.length!==1?'s':''})</span>`;
+  const tb=document.getElementById('dp-body');
+  const oc=t=>t==='Originating'?'bo':'bp';
+  if(!trains.length){tb.innerHTML=`<tr><td colspan="10" style="text-align:center;padding:30px;color:var(--text-3)">No ${dir} bound trains in selected range.</td></tr>`;}
+  else{tb.innerHTML=trains.map(r=>{const op=cl(r,C.op),via=r[C.v2]||r[C.v1]||'—';return`<tr><td><strong>${r[C.tn]||'—'}</strong></td><td>${r[C.fs]||'—'}</td><td>${r[C.ts]||'—'}</td><td>${r[C.dp]||'—'}</td><td>${r[C.ar]||'—'}</td><td><span class="badge ${oc(op)}">${op||'—'}</span></td><td>${r[C.ter]||'—'}</td><td>${mBadge(r[C.mnt])}</td><td>${r[C.tt]||'—'}</td><td>${via}</td></tr>`;}).join('');}
+  document.getElementById('dp-foot').textContent=`SHOWING ${trains.length} ${dir.toUpperCase()} BOUND TRAINS · SELECTED DATE RANGE`;
+  const p=document.getElementById('dp');p.style.display='block';p.style.borderTop=`3px solid ${col}`;p.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function closeDP(){adp=null;document.getElementById('dp').style.display='none';['East','West','North','South'].forEach(d=>{const el=document.getElementById('db-'+d);if(el)el.classList.remove('ad');});}
+
+/* ============================================================
+   TRAIN MOVEMENTS — MAIN LINE
+   ============================================================ */
+const TM_SHEET_ID  = '1LLHhusyf6fY3aLLPePn1QoxpHt5HpUediNoAekx1AsI';
+const TM_API_KEY   = 'AIzaSyDGS15xARpwOI8W8Fo0Avkv2gRGAjU4VE0';
+const TM_MONTHS    = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const TM_STATIONS  = [
+  {key:'NDLS',    label:'NDLS'},
+  {key:'DLI',     label:'DLI'},
+  {key:'DSJ',     label:'DSJ'},
+  {key:'DEE',     label:'DEE'},
+  {key:'PTNR',    label:'PTNR'},
+  {key:'SOUTH_LN',label:'South LN'},
+  {key:'NORTH_LN',label:'North LN'},
+  {key:'NZM',     label:'NZM'},
+];
+const TM_MON_COLORS = {
+  Jan:'#1a6e40',Feb:'#1a5c8a',Mar:'#c8922a',Apr:'#6b4c9a',
+  May:'#1a7a7a',Jun:'#b02020',Jul:'#1a6e40',Aug:'#1a5c8a',
+  Sep:'#c8922a',Oct:'#6b4c9a',Nov:'#1a7a7a',Dec:'#b02020'
+};
+// Fixed colors per station for UP/DN lines
+const TM_STN_UP_COLOR = '#1a3464';
+const TM_STN_DN_COLOR = '#c8922a';
+
+let tmData      = [];
+let tmSelMonths = [];
+let tmCharts    = {}; // stores chart instances keyed by station
+
+// ── INIT ──────────────────────────────────────────────────────
+function tmInit() {
+  tmBuildPills();
+  const now = new Date();
+  tmSelMonths = [TM_MONTHS[now.getMonth()]];
+  document.getElementById('tm-year').value = String(now.getFullYear());
+  tmUpdatePillUI();
+  tmLoad();
+}
+
+function tmBuildPills() {
+  const wrap = document.getElementById('tm-month-pills');
+  wrap.innerHTML = TM_MONTHS.map(m =>
+    `<div class="fo-month-pill" id="tmpill-${m}" onclick="tmToggleMonth('${m}')">${m}</div>`
+  ).join('');
+}
+
+function tmToggleMonth(m) {
+  const idx = tmSelMonths.indexOf(m);
+  if (idx > -1) { if (tmSelMonths.length===1) return; tmSelMonths.splice(idx,1); }
+  else tmSelMonths.push(m);
+  tmUpdatePillUI();
+  tmApplyFilter();
+}
+
+function tmUpdatePillUI() {
+  TM_MONTHS.forEach(m => {
+    const el = document.getElementById('tmpill-'+m);
+    if (!el) return;
+    if (tmSelMonths.includes(m)) {
+      el.classList.add('active');
+      el.style.background  = TM_MON_COLORS[m];
+      el.style.borderColor = TM_MON_COLORS[m];
+    } else {
+      el.classList.remove('active');
+      el.style.background  = '';
+      el.style.borderColor = '';
+    }
+  });
+}
+
+function tmSelectAll() { tmSelMonths=[...TM_MONTHS]; tmUpdatePillUI(); tmApplyFilter(); }
+function tmClearMonths() {
+  tmSelMonths=[TM_MONTHS[new Date().getMonth()]];
+  tmUpdatePillUI(); tmApplyFilter();
+}
+
+// ── LOAD DATA ─────────────────────────────────────────────────
+async function tmLoad() {
+  tmSetStatus('loading','Loading train movement data...',true);
+  try {
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${TM_SHEET_ID}/values/${encodeURIComponent('MAINLINE_TRAINS')}?key=${TM_API_KEY}`;
+    const res = await fetch(url);
+    if (!res.ok) { const e=await res.json().catch(()=>({})); throw new Error((e.error&&e.error.message)||`HTTP ${res.status}`); }
+    const json = await res.json();
+    const rows = json.values||[];
+    if (rows.length<2) { tmSetStatus('ok','',false); return; }
+    const headers = rows[0].map(h=>(h||'').toString().trim());
+    tmData = rows.slice(1).map(r => {
+      const obj={};
+      headers.forEach((h,i)=>{ obj[h]=r[i]!==undefined?r[i]:null; });
+      return obj;
+    });
+    tmSetStatus('ok','',false);
+    tmApplyFilter();
+  } catch(e) {
+    tmSetStatus('error','✕ '+e.message,true);
+  }
+}
+
+function tmSetStatus(type,msg,visible) {
+  const bar=document.getElementById('tm-sbar');
+  bar.classList.toggle('vis',visible);
+  document.getElementById('tm-sdot').className='sdot'+(type==='loading'?' loading':type==='error'?' error':'');
+  document.getElementById('tm-stxt').textContent=msg;
+}
+
+// ── APPLY FILTER ──────────────────────────────────────────────
+function tmApplyFilter() {
+  const year=parseInt(document.getElementById('tm-year').value);
+  tmRenderKPIs(year);
+  tmRenderStationCharts(year);
+}
+
+// ── HELPERS ───────────────────────────────────────────────────
+function tmParseDate(val) {
+  if (!val) return null;
+  if (val instanceof Date) return val;
+  const s=val.toString().trim();
+  const m1=s.match(/^(\d{1,2})-([A-Za-z]{3,})-(\d{4})$/);
+  if (m1) {
+    const MONS={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+    const mk=m1[2].toLowerCase().substring(0,3);
+    if (MONS[mk]!==undefined) return new Date(parseInt(m1[3]),MONS[mk],parseInt(m1[1]));
+  }
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return new Date(s.substring(0,10));
+  const d=new Date(s); return isNaN(d.getTime())?null:d;
+}
+
+function tmNum(v) {
+  if (v===null||v===undefined||v===''||v==='-') return null;
+  const n=parseFloat(String(v).replace(/,/g,''));
+  return isNaN(n)?null:n;
+}
+
+// Get rows for year + selected months, sorted chronologically
+function tmGetRows(year) {
+  const rows=[];
+  tmSelMonths.forEach(mon=>{
+    const monNum=TM_MONTHS.indexOf(mon)+1;
+    tmData.filter(r=>{
+      const d=tmParseDate(r['Date']);
+      return d&&d.getFullYear()===year&&(d.getMonth()+1)===monNum;
+    }).forEach(r=>rows.push(r));
+  });
+  rows.sort((a,b)=>{
+    const da=tmParseDate(a['Date']),db=tmParseDate(b['Date']);
+    return (da&&db)?da-db:0;
+  });
+  return rows;
+}
+
+// ── KPI CARDS ─────────────────────────────────────────────────
+// One card per selected month
+// Each card shows avg/day for EVERY station — UP, DN, Total
+function tmRenderKPIs(year) {
+  const wrap = document.getElementById('tm-kpi-row');
+  wrap.innerHTML = tmSelMonths.map(mon => {
+    const monNum = TM_MONTHS.indexOf(mon)+1;
+    const rows   = tmData.filter(r=>{
+      const d=tmParseDate(r['Date']);
+      return d&&d.getFullYear()===year&&(d.getMonth()+1)===monNum;
+    });
+    const days  = Math.max(rows.length,1);
+    const color = TM_MON_COLORS[mon]||'var(--green-l)';
+
+    // Calculate avg/day per station
+    const stnRows = TM_STATIONS.map(s=>{
+      const upSum = rows.reduce((t,r)=>t+(tmNum(r[s.key+'_UP'])||0),0);
+      const dnSum = rows.reduce((t,r)=>t+(tmNum(r[s.key+'_DN'])||0),0);
+      return {
+        label : s.label,
+        avgUp : (upSum/days).toFixed(1),
+        avgDn : (dnSum/days).toFixed(1),
+        avgTot: ((upSum+dnSum)/days).toFixed(1),
+      };
+    });
+
+    return `
+      <div class="fo-kpi-card" style="border-top-color:${color}">
+        <div class="fo-kpi-month" style="color:${color}">${mon} ${year} &nbsp;·&nbsp; ${days} days</div>
+        <div style="overflow-x:auto;margin-top:8px">
+          <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:600px">
+            <thead>
+              <tr style="background:var(--navy)">
+                <th style="padding:6px 12px;text-align:left;color:rgba(255,255,255,.55);font-size:10px;font-weight:600;letter-spacing:.05em">STATION</th>
+                <th style="padding:6px 12px;text-align:center;color:rgba(255,255,255,.55);font-size:10px;font-weight:600">AVG UP/DAY</th>
+                <th style="padding:6px 12px;text-align:center;color:rgba(255,255,255,.55);font-size:10px;font-weight:600">AVG DN/DAY</th>
+                <th style="padding:6px 12px;text-align:center;color:${color};font-size:10px;font-weight:600">AVG TOTAL/DAY</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${stnRows.map((s,i)=>`
+                <tr style="background:${i%2===0?'var(--bg)':'var(--card)'}">
+                  <td style="padding:7px 12px;font-weight:600;color:var(--navy)">${s.label}</td>
+                  <td style="padding:7px 12px;text-align:center;color:#1a3464;font-family:var(--head);font-size:15px;font-weight:700">${s.avgUp}</td>
+                  <td style="padding:7px 12px;text-align:center;color:#c8922a;font-family:var(--head);font-size:15px;font-weight:700">${s.avgDn}</td>
+                  <td style="padding:7px 12px;text-align:center;color:${color};font-family:var(--head);font-size:16px;font-weight:700">${s.avgTot}</td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ── 8 STATION MINI CHARTS ─────────────────────────────────────
+// Each station gets its own line chart
+// X-axis = dates, Y-axis = train count
+// Two lines: UP (solid navy) + DN (dashed gold)
+function tmRenderStationCharts(year) {
+  const tick='#8a8a9a', grid='rgba(10,31,60,0.06)', tf={size:10};
+  const rows = tmGetRows(year);
+
+  // Build date labels
+  const labels = rows.map(r=>{
+    const d=tmParseDate(r['Date']);
+    return d ? d.getDate()+'-'+TM_MONTHS[d.getMonth()] : '';
+  });
+
+  TM_STATIONS.forEach(stn=>{
+    const upVals = rows.map(r=>tmNum(r[stn.key+'_UP']));
+    const dnVals = rows.map(r=>tmNum(r[stn.key+'_DN']));
+
+    // Calculate avg for reference lines
+    const upAvg  = upVals.filter(v=>v!==null).length
+      ? Math.round(upVals.filter(v=>v!==null).reduce((a,b)=>a+b,0)/upVals.filter(v=>v!==null).length*10)/10
+      : 0;
+    const dnAvg  = dnVals.filter(v=>v!==null).length
+      ? Math.round(dnVals.filter(v=>v!==null).reduce((a,b)=>a+b,0)/dnVals.filter(v=>v!==null).length*10)/10
+      : 0;
+
+    // Destroy old chart if exists
+    if (tmCharts[stn.key]) { tmCharts[stn.key].destroy(); delete tmCharts[stn.key]; }
+
+    const canvas = document.getElementById('tm-c-'+stn.key);
+    if (!canvas) return;
+
+    tmCharts[stn.key] = new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels,
+        datasets:[
+          {
+            label   : `UP (avg: ${upAvg}/day)`,
+            data    : upVals,
+            borderColor      : TM_STN_UP_COLOR,
+            backgroundColor  : 'rgba(26,52,100,0.07)',
+            borderWidth      : 2,
+            pointRadius      : 2.5,
+            pointBackgroundColor: TM_STN_UP_COLOR,
+            tension          : 0.3,
+            fill             : true,
+            spanGaps         : false,
+          },
+          {
+            label   : `DN (avg: ${dnAvg}/day)`,
+            data    : dnVals,
+            borderColor      : TM_STN_DN_COLOR,
+            backgroundColor  : 'transparent',
+            borderWidth      : 2,
+            borderDash       : [5,4],
+            pointRadius      : 2.5,
+            pointBackgroundColor: TM_STN_DN_COLOR,
+            tension          : 0.3,
+            fill             : false,
+            spanGaps         : false,
+          },
+        ]
+      },
+      options:{
+        responsive   : true,
+        maintainAspectRatio: false,
+        plugins:{
+          legend:{
+            position:'top',
+            labels:{font:{size:10},color:tick,boxWidth:12,padding:8}
+          },
+          tooltip:{ mode:'index', intersect:false }
+        },
+        scales:{
+          x:{
+            ticks:{color:tick,font:tf,maxRotation:45,maxTicksLimit:12},
+            grid:{display:false}
+          },
+          y:{
+            ticks:{color:tick,font:tf},
+            grid:{color:grid},
+            beginAtZero:true,
+            title:{display:true,text:'Trains',color:tick,font:{size:9}}
+          }
+        }
+      }
+    });
+  });
+}
+
+
+const FO_API_KEY    = 'AIzaSyDGS15xARpwOI8W8Fo0Avkv2gRGAjU4VE0';
+const FO_SHEET_ID   = '1LLHhusyf6fY3aLLPePn1QoxpHt5HpUediNoAekx1AsI';
+const FO_MONTHS     = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const FO_FY_MONTHS  = ['Apr','May','June','July','August','September','October','November','December','January','February','March'];
+const FO_COLORS     = ['#1a6e40','#c8922a','#1a3464','#b02020','#6b4c9a','#1a7a7a'];
+const FO_LY_COLOR   = '#aaaaaa';
+
+// Month pill colors per month
+const FO_MONTH_COLORS = {
+  Jan:'#1a6e40',Feb:'#1a5c8a',Mar:'#c8922a',Apr:'#6b4c9a',
+  May:'#1a7a7a',Jun:'#b02020',Jul:'#1a6e40',Aug:'#1a5c8a',
+  Sep:'#c8922a',Oct:'#6b4c9a',Nov:'#1a7a7a',Dec:'#b02020'
+};
+
+let foData = {
+  dailyKPIs    : [],
+  monthlyWagons: [],
+  monthlyMT    : [],
+  dailyLoading : [],
+};
+
+let foSelectedMonths = [];
+let foChWagons, foChMT, foChDaily, foChRevTarget;
+
+// ── INIT ─────────────────────────────────────────────────────
+function foInit() {
+  buildMonthPills();
+  // Default: current month selected
+  const now   = new Date();
+  const curMon = FO_MONTHS[now.getMonth()];
+  foSelectedMonths = [curMon];
+  document.getElementById('fo-year').value = String(now.getFullYear());
+  updateMonthPillUI();
+  foLoad();
+}
+
+// ── BUILD MONTH PILLS ─────────────────────────────────────────
+function buildMonthPills() {
+  const wrap = document.getElementById('fo-month-pills');
+  wrap.innerHTML = FO_MONTHS.map(m =>
+    `<div class="fo-month-pill" id="fopill-${m}" onclick="foToggleMonth('${m}')">${m}</div>`
+  ).join('');
+}
+
+function foToggleMonth(m) {
+  const idx = foSelectedMonths.indexOf(m);
+  if (idx > -1) {
+    if (foSelectedMonths.length === 1) return; // keep at least one
+    foSelectedMonths.splice(idx, 1);
+  } else {
+    foSelectedMonths.push(m);
+  }
+  updateMonthPillUI();
+  foApplyFilter();
+}
+
+function updateMonthPillUI() {
+  FO_MONTHS.forEach(m => {
+    const el = document.getElementById('fopill-'+m);
+    if (!el) return;
+    if (foSelectedMonths.includes(m)) {
+      el.classList.add('active');
+      el.style.background = FO_MONTH_COLORS[m];
+      el.style.borderColor = FO_MONTH_COLORS[m];
+    } else {
+      el.classList.remove('active');
+      el.style.background = '';
+      el.style.borderColor = '';
+    }
+  });
+}
+
+function foSelectAllMonths() {
+  foSelectedMonths = [...FO_MONTHS];
+  updateMonthPillUI();
+  foApplyFilter();
+}
+
+function foClearMonths() {
+  const now = new Date();
+  foSelectedMonths = [FO_MONTHS[now.getMonth()]];
+  updateMonthPillUI();
+  foApplyFilter();
+}
+
+// ── LOAD DATA FROM GOOGLE SHEETS ──────────────────────────────
+async function foLoad() {
+  foSetStatus('loading','Loading freight data from Google Sheets...',true);
+  try {
+    const [kpi, wagons, mt, daily] = await Promise.all([
+      foFetchTab('DAILY_KPIs'),
+      foFetchTab('MONTHLY_WAGONS'),
+      foFetchTab('MONTHLY_MT'),
+      foFetchTab('DAILY_LOADING'),
+    ]);
+
+    foData.dailyKPIs     = foParseRows(kpi);
+    foData.monthlyWagons = foParseRows(wagons);
+    foData.monthlyMT     = foParseRows(mt);
+    foData.dailyLoading  = foParseRows(daily);
+
+    foSetStatus('ok','',false);
+    foApplyFilter();
+  } catch(e) {
+    foSetStatus('error','✕ ' + e.message, true);
+  }
+}
+
+async function foFetchTab(tabName) {
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${FO_SHEET_ID}/values/${encodeURIComponent(tabName)}?key=${FO_API_KEY}`;
+  const res = await fetch(url);
+  if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error((e.error&&e.error.message)||`HTTP ${res.status}`); }
+  return res.json();
+}
+
+function foParseRows(json) {
+  const rows = json.values || [];
+  if (rows.length < 2) return [];
+  const headers = rows[0].map(h => (h||'').toString().trim());
+  return rows.slice(1).map(r => {
+    const obj = {};
+    headers.forEach((h,i) => { obj[h] = r[i] !== undefined ? r[i] : null; });
+    return obj;
+  });
+}
+
+function foSetStatus(type, msg, visible) {
+  const bar = document.getElementById('fo-sbar');
+  bar.classList.toggle('vis', visible);
+  const dot = document.getElementById('fo-sdot');
+  dot.className = 'sdot' + (type==='loading'?' loading':type==='error'?' error':'');
+  document.getElementById('fo-stxt').textContent = msg;
+}
+
+// ── APPLY FILTER ──────────────────────────────────────────────
+function foApplyFilter() {
+  const year = parseInt(document.getElementById('fo-year').value);
+  foRenderKPIs(year);
+  foRenderMonthlyCharts();
+  foRenderRevTargetChart(year);
+  foRenderDailyChart(year);
+}
+
+// ── KPI CARDS ─────────────────────────────────────────────────
+function foRenderKPIs(year) {
+  const grid = document.getElementById('fo-kpi-row');
+  const cols  = Math.min(foSelectedMonths.length, 4);
+  grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+
+  grid.innerHTML = foSelectedMonths.map(mon => {
+    const monIdx  = FO_MONTHS.indexOf(mon); // 0-based
+    const monNum  = monIdx + 1;             // 1-based month number
+
+    // Filter DAILY_KPIs for this year + month
+    const rows = foData.dailyKPIs.filter(r => {
+      const d = foParseDate(r['Date']);
+      return d && d.getFullYear() === year && (d.getMonth() + 1) === monNum;
+    });
+
+    // Avg Wagon Loading — col: Wagon_Loading in DAILY_KPIs
+    const wagonVals = rows.map(r => foNum(r['Wagon_Loading'])).filter(v => v !== null);
+    const avgWagon  = wagonVals.length
+      ? Math.round(wagonVals.reduce((a,b)=>a+b,0) / wagonVals.length)
+      : null;
+
+    // Revenue Loading = last available value in this month — col: Revenue_Loading_MT
+    const revRows = rows.filter(r => foNum(r['Revenue_Loading_MT']) !== null);
+    const lastRev = revRows.length
+      ? foNum(revRows[revRows.length-1]['Revenue_Loading_MT'])
+      : null;
+
+    const color = FO_MONTH_COLORS[mon] || 'var(--green-l)';
+
+    return `
+      <div class="fo-kpi-card" style="border-top-color:${color}">
+        <div class="fo-kpi-month" style="color:${color}">${mon} ${year}</div>
+        <div class="fo-kpi-row2">
+          <div class="fo-kpi-item">
+            <div class="fo-kpi-lbl">Avg Wagon Loading</div>
+            <div class="fo-kpi-val">${avgWagon !== null ? avgWagon.toLocaleString() : '—'}</div>
+            <div class="fo-kpi-unit">wagons / day</div>
+          </div>
+          <div class="fo-kpi-item">
+            <div class="fo-kpi-lbl">Revenue Loading (latest)</div>
+            <div class="fo-kpi-val">${lastRev !== null ? lastRev.toFixed(2) : '—'}</div>
+            <div class="fo-kpi-unit">Million Tonnes</div>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ── MONTHLY CHARTS (fixed — all 3 years, Apr-Mar) ─────────────
+function foRenderMonthlyCharts() {
+  const tick = '#8a8a9a', grid = 'rgba(10,31,60,0.06)', tf = {size:11};
+  const years = ['2023-24','2024-25','2025-26'];
+  const yearColors = ['#1a3464','#c8922a','#1a6e40'];
+
+  // ── Chart 1: Monthly Wagons/Day ──
+  const FY_SHORT = ['Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar'];
+  const wDatasets = years.map((yr,i) => {
+    const row = foData.monthlyWagons.find(r => (r['Year']||'').toString().trim() === yr);
+    const vals = FO_FY_MONTHS.map(m => foGetMonthVal(row, m));
+    return {
+      label: yr, data: vals,
+      borderColor: yearColors[i],
+      backgroundColor: yearColors[i]+'22',
+      borderWidth: 2.5, pointRadius: 4,
+      pointBackgroundColor: yearColors[i],
+      tension: 0.35, fill: false,
+      spanGaps: false,
+    };
+  });
+
+  if (foChWagons) foChWagons.destroy();
+  foChWagons = new Chart(document.getElementById('fo-cWagons'), {
+    type: 'line',
+    data: { labels: FY_SHORT, datasets: wDatasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position:'top', labels:{font:{size:11},color:tick,boxWidth:14,padding:12} } },
+      scales: {
+        x: { ticks:{color:tick,font:tf}, grid:{display:false} },
+        y: { ticks:{color:tick,font:tf}, grid:{color:grid}, beginAtZero:false,
+             title:{display:true,text:'Wagons/Day',color:tick,font:{size:10}} }
+      }
+    }
+  });
+
+  // ── Chart 2: Monthly MT ──
+  const mtDatasets = years.map((yr,i) => {
+    const row = foData.monthlyMT.find(r => (r['Year']||'').toString().trim() === yr);
+    const vals = FO_FY_MONTHS.map(m => foGetMonthVal(row, m));
+    return {
+      label: yr, data: vals,
+      borderColor: yearColors[i],
+      backgroundColor: yearColors[i]+'22',
+      borderWidth: 2.5, pointRadius: 4,
+      pointBackgroundColor: yearColors[i],
+      tension: 0.35, fill: false,
+      spanGaps: false,
+    };
+  });
+
+  if (foChMT) foChMT.destroy();
+  foChMT = new Chart(document.getElementById('fo-cMT'), {
+    type: 'line',
+    data: { labels: FY_SHORT, datasets: mtDatasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position:'top', labels:{font:{size:11},color:tick,boxWidth:14,padding:12} } },
+      scales: {
+        x: { ticks:{color:tick,font:tf}, grid:{display:false} },
+        y: { ticks:{color:tick,font:tf}, grid:{color:grid}, beginAtZero:false,
+             title:{display:true,text:'Million Tonnes',color:tick,font:{size:10}} }
+      }
+    }
+  });
+}
+
+// ── DAILY LOADING CHART ───────────────────────────────────────
+// Each selected month = one CY line + one shared LY line per month
+// X-axis = Day 1-31
+// ── REVENUE LOADING VS TARGET — CUMULATIVE DAILY ─────────────
+// Source: DAILY_KPIs — Revenue_Loading_MT vs Target_Loading_CY
+// Shows cumulative daily trend — are we ahead or behind target?
+function foRenderRevTargetChart(year) {
+  const tick = '#8a8a9a', grid = 'rgba(10,31,60,0.06)', tf = {size:11};
+
+  // Collect all rows for selected months + year from DAILY_KPIs
+  // Sort chronologically
+  const allRows = [];
+  foSelectedMonths.forEach(mon => {
+    const monIdx = FO_MONTHS.indexOf(mon);
+    const monNum = monIdx + 1;
+    foData.dailyKPIs.filter(r => {
+      const d = foParseDate(r['Date']);
+      return d && d.getFullYear() === year && (d.getMonth()+1) === monNum;
+    }).forEach(r => allRows.push(r));
+  });
+
+  // Sort by date ascending
+  allRows.sort((a,b) => {
+    const da = foParseDate(a['Date']), db = foParseDate(b['Date']);
+    return (da&&db) ? da-db : 0;
+  });
+
+  // Build labels and data arrays
+  const labels   = [];
+  const revVals  = [];
+  const tgtVals  = [];
+
+  allRows.forEach(r => {
+    const d = foParseDate(r['Date']);
+    if (!d) return;
+    const rev = foNum(r['Revenue_Loading_MT']);
+    const tgt = foNum(r['Target_Loading_CY']);
+    // Only include rows that have at least one value
+    if (rev === null && tgt === null) return;
+    labels.push(d.getDate() + '-' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()]);
+    revVals.push(rev);
+    tgtVals.push(tgt);
+  });
+
+  if (foChRevTarget) foChRevTarget.destroy();
+  foChRevTarget = new Chart(document.getElementById('fo-cRevTarget'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Revenue Loading (Actual)',
+          data: revVals,
+          borderColor: '#1a6e40',
+          backgroundColor: 'rgba(26,110,64,0.08)',
+          borderWidth: 2.5,
+          pointRadius: 3,
+          pointBackgroundColor: '#1a6e40',
+          pointBorderColor: '#fff',
+          pointBorderWidth: 1.5,
+          tension: 0.35,
+          fill: true,
+          spanGaps: false,
+        },
+        {
+          label: 'Target Loading',
+          data: tgtVals,
+          borderColor: '#c8922a',
+          backgroundColor: 'transparent',
+          borderWidth: 2,
+          borderDash: [6,4],
+          pointRadius: 3,
+          pointBackgroundColor: '#c8922a',
+          pointBorderColor: '#fff',
+          pointBorderWidth: 1.5,
+          tension: 0.35,
+          fill: false,
+          spanGaps: false,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'top',
+          labels: { font:{size:11}, color:tick, boxWidth:14, padding:14 }
+        },
+        tooltip: {
+          mode: 'index',
+          intersect: false,
+          callbacks: {
+            label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y !== null ? ctx.parsed.y.toFixed(2) + ' MT' : '—'}`
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color:tick, font:tf, maxRotation:45 },
+          grid: { display:false }
+        },
+        y: {
+          ticks: { color:tick, font:tf },
+          grid: { color:grid },
+          beginAtZero: false,
+          title: { display:true, text:'Million Tonnes (Cumulative)', color:tick, font:{size:10} }
+        }
+      }
+    }
+  });
+}
+
+function foRenderDailyChart(year) {
+  const tick = '#8a8a9a', grid = 'rgba(10,31,60,0.06)', tf = {size:11};
+  const labels = Array.from({length:31}, (_,i) => String(i+1));
+
+  const datasets = [];
+
+  foSelectedMonths.forEach((mon, idx) => {
+    const monIdx = FO_MONTHS.indexOf(mon);
+    const monNum = monIdx + 1;
+    const color  = FO_MONTH_COLORS[mon] || FO_COLORS[idx % FO_COLORS.length];
+
+    // Filter daily loading rows for this year + month
+    const rows = foData.dailyLoading.filter(r => {
+      const d = foParseDate(r['Date']);
+      return d && d.getFullYear() === year && (d.getMonth()+1) === monNum;
+    });
+
+    // Build day-indexed arrays (day 1-31)
+    const cyVals = Array(31).fill(null);
+    const lyVals = Array(31).fill(null);
+
+    rows.forEach(r => {
+      const d = foParseDate(r['Date']);
+      if (!d) return;
+      const dayIdx = d.getDate() - 1; // 0-based
+      const cy = foNum(r['CY_Daily']);
+      const ly = foNum(r['LY_Daily']);
+      if (cy !== null) cyVals[dayIdx] = cy;
+      if (ly !== null) lyVals[dayIdx] = ly;
+    });
+
+    // CY line for this month
+    datasets.push({
+      label: `${mon} ${year} (CY)`,
+      data: cyVals,
+      borderColor: color,
+      backgroundColor: color+'18',
+      borderWidth: 2.5,
+      pointRadius: 3,
+      pointBackgroundColor: color,
+      tension: 0.3,
+      fill: false,
+      spanGaps: false,
+    });
+
+    // LY line for this month (dashed, same color but lighter)
+    datasets.push({
+      label: `${mon} ${year-1} (LY)`,
+      data: lyVals,
+      borderColor: color,
+      backgroundColor: 'transparent',
+      borderWidth: 1.5,
+      borderDash: [5,4],
+      pointRadius: 2,
+      pointBackgroundColor: color,
+      tension: 0.3,
+      fill: false,
+      spanGaps: false,
+    });
+  });
+
+  if (foChDaily) foChDaily.destroy();
+  foChDaily = new Chart(document.getElementById('fo-cDaily'), {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position:'top',
+          labels:{font:{size:10},color:tick,boxWidth:14,padding:10,
+            filter: item => true // show all
+          }
+        },
+        tooltip: { mode:'index', intersect:false }
+      },
+      scales: {
+        x: {
+          ticks:{color:tick,font:tf},
+          grid:{display:false},
+          title:{display:true,text:'Day of Month',color:tick,font:{size:10}}
+        },
+        y: {
+          ticks:{color:tick,font:tf},
+          grid:{color:grid},
+          beginAtZero:false,
+          title:{display:true,text:'Wagons Loaded',color:tick,font:{size:10}}
+        }
+      }
+    }
+  });
+}
+
+// ── ROBUST MONTH LOOKUP ───────────────────────────────────────
+// Handles both "Jun"/"June", "Jul"/"July" etc.
+const FO_MONTH_ALIASES = {
+  'Apr':['Apr','April'],'May':['May'],
+  'June':['Jun','June'],'July':['Jul','July'],
+  'August':['Aug','August'],'September':['Sep','September'],
+  'October':['Oct','October'],'November':['Nov','November'],
+  'December':['Dec','December'],'January':['Jan','January'],
+  'February':['Feb','February'],'March':['Mar','March'],
+};
+
+function foGetMonthVal(row, monthKey) {
+  if (!row) return null;
+  // Try direct key first
+  if (row[monthKey] !== undefined && row[monthKey] !== null && row[monthKey] !== '') {
+    return foNum(row[monthKey]);
+  }
+  // Try aliases
+  const aliases = FO_MONTH_ALIASES[monthKey] || [];
+  for (const alias of aliases) {
+    if (row[alias] !== undefined && row[alias] !== null && row[alias] !== '') {
+      return foNum(row[alias]);
+    }
+  }
+  return null;
+}
+function foParseDate(val) {
+  if (!val) return null;
+  // Handles: "22-Mar-2026", "2026-03-22", "22/03/2026", Date objects
+  if (val instanceof Date) return val;
+  const s = val.toString().trim();
+  // dd-mmm-yyyy
+  if (/^\d{2}-[A-Za-z]{3}-\d{4}$/.test(s)) {
+    const p = s.split('-');
+    const months = {Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
+    return new Date(parseInt(p[2]), months[p[1]], parseInt(p[0]));
+  }
+  // yyyy-mm-dd
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return new Date(s.substring(0,10));
+  // dd/mm/yyyy
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
+    const p = s.split('/');
+    return new Date(parseInt(p[2]), parseInt(p[1])-1, parseInt(p[0]));
+  }
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function foNum(val) {
+  if (val === null || val === undefined || val === '' || val === '-') return null;
+  const n = parseFloat(String(val).replace(/,/g,''));
+  return isNaN(n) ? null : n;
+}
+</script>
+</body>
+</html>
